@@ -1,0 +1,40 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.cgmotion.editor
+productName: CG Motion
+copyright: Copyright © 2026 RegemarkFP
+files:
+  - filter:
+      - main.js
+      - preload.js
+      - package.json
+      - app/**/*
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+  signtoolOptions:
+    publisherName: RegemarkFP
+    signingHashAlgorithms:
+      - sha256
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: CG Motion
+  artifactName: CG Motion Setup 1.0.${ext}
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+portable:
+  artifactName: CG Motion 1.0 Portable.${ext}
+fileAssociations:
+  - ext: cgm
+    name: CG Motion project
+    description: CG Motion project
+    icon: build/icon.ico
+    role: Editor
+electronVersion: 33.4.11
