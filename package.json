@@ -1,0 +1,78 @@
+{
+  "name": "cg-motion",
+  "version": "1.0.0",
+  "description": "Timeline-based editor for CasparCG HTML templates",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --x64"
+  },
+  "dependencies": {
+    "lottie-web": "^5.12.2"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "productName": "CG Motion",
+  "author": {
+    "name": "RegemarkFP"
+  },
+  "build": {
+    "appId": "com.cgmotion.editor",
+    "productName": "CG Motion",
+    "copyright": "Copyright © 2026 RegemarkFP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "app/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "signtoolOptions": {
+        "publisherName": "RegemarkFP",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CG Motion",
+      "artifactName": "CG Motion Setup 1.0.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "CG Motion 1.0 Portable.${ext}"
+    },
+    "fileAssociations": [
+      {
+        "ext": "cgm",
+        "name": "CG Motion project",
+        "description": "CG Motion project",
+        "icon": "build/icon.ico",
+        "role": "Editor"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "docs/CG Motion Guide.pdf",
+        "to": "CG Motion Guide.pdf"
+      }
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+# Builds the CG Motion installer and portable app on GitHub's Windows computers.
+# - Every upload to main: the .exe files and the guide appear under Actions > the run > Artifacts.
+# - A version tag (v1.1, v1.2 ...): they are also published as a GitHub Release anyone with access can download.
+# - Signed as RegemarkFP when the REGEMARKFP_PFX and REGEMARKFP_PASSWORD secrets are set (see README).
+name: Build CG Motion
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the build tools
+        shell: pwsh
+        run: if (Test-Path package-lock.json) { npm ci } else { npm install }
+
+      - name: Build the installer and the portable app
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.REGEMARKFP_PFX }}
+          PFX_PASSWORD: ${{ secrets.REGEMARKFP_PASSWORD }}
+        run: |
+          if ($env:PFX_B64) {
+            $pfx = Join-Path $env:RUNNER_TEMP 'RegemarkFP.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_B64))
+            $env:CSC_LINK = $pfx
+            $env:CSC_KEY_PASSWORD = $env:PFX_PASSWORD
+            Write-Host 'Signing as RegemarkFP.'
+          } else {
+            $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
+            Write-Host 'Not signed: add the REGEMARKFP_PFX and REGEMARKFP_PASSWORD secrets to sign.'
+          }
+          $extra = @()
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            # a release tag like v1.1 names the files after it: CG Motion Setup 1.1.exe, CG Motion 1.1 Portable.exe
+            $v = $env:GITHUB_REF_NAME.TrimStart('v')
+            $sem = if ($v -match '^\d+\.\d+$') { "$v.0" } else { $v }
+            $extra = @("-c.extraMetadata.version=$sem", "-c.nsis.artifactName=CG Motion Setup $v.`${ext}", "-c.portable.artifactName=CG Motion $v Portable.`${ext}")
+          }
+          npx electron-builder --win nsis portable --x64 --publish never @extra
+          Copy-Item 'docs/CG Motion Guide.pdf' dist/
+
+      - name: Keep the files with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: CG-Motion-Windows
+          path: |
+            dist/CG Motion*.exe
+            dist/CG Motion Guide.pdf
+
+      - name: Publish a release (version tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CG Motion ${{ github.ref_name }}
+          files: |
+            dist/CG Motion*.exe
+            dist/CG Motion Guide.pdf

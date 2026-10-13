@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CG Motion</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="splash.css">
+</head>
+<body>
+<div id="splash"><div class="sp-in"><img src="logo.png" alt="RegemarkFP" class="sp-logo"><div class="sp-name">CG Motion</div><div class="sp-tag">Capturing life in motion</div><div class="sp-by">by RegemarkFP</div></div><div class="sp-load"><div class="sp-bar"><i></i></div><span id="sp-ver">Loading</span></div></div>
+<div id="app">
+  <div id="menubar">
+    <span class="brand">CG Motion</span>
+    <span id="menus"></span>
+    <span class="grow"></span>
+    <span id="proj-name"></span>
+  </div>
+  <div id="topbar">
+    <button data-tool="select" title="Select and move (V)">Select</button>
+    <button data-tool="text" title="Click in the viewer to add a text box, or drag to draw one at the size you want (T)">Text</button>
+    <button data-tool="rect" title="Drag in the viewer to draw a rectangle (R)">Rectangle</button>
+    <button data-tool="ellipse" title="Drag in the viewer to draw an ellipse (O)">Ellipse</button>
+    <button data-tool="hand" title="Hand: drag to move around the viewer (H). Hold Space for a moment, or drag with the middle button, to do the same with any tool. For a laptop trackpad turn on View > Trackpad scrolling.">Hand</button>
+    <span class="sep"></span>
+    <button data-cmd="slot" title="Add an empty image slot that CasparCG fills (team logos, flags, headshots)">Image slot</button>
+    <button data-cmd="null" title="Add a null layer to parent other layers to">Null</button>
+    <button data-cmd="table" title="Add a table: standings, line-ups, results. Paste rows from Excel or send them from CasparCG">Table</button>
+    <button data-cmd="chart" title="Add a chart: worm, manhattan, bars or a pie, filled from data">Chart</button>
+    <button data-cmd="crawl" title="Add a crawl (ticker) that scrolls items with a separator between them">Crawl</button>
+    <button data-cmd="repeat" title="Repeat the selected layers as rows or columns, each copy with its own numbered fields (tables, full pagers, line-ups)">Repeater</button>
+    <span class="sep"></span>
+    <button data-cmd="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button data-cmd="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    <span class="grow"></span>
+    <button data-cmd="save" title="Save project (Ctrl+S)">Save</button>
+    <button data-cmd="export" class="primary" title="Export the composition that is open as a single-file HTML template, into the project folder, named after the composition (Ctrl+E)">Export template</button>
+  </div>
+  <div id="dock"></div>
+  <div id="statusbar"><span id="status"></span><span class="grow"></span><span class="hint">Right-click a layer for more. Drag a panel tab to rearrange the workspace.</span></div>
+  <div id="dock-store">
+    <div id="center" class="pn">
+      <div id="stage-wrap">
+        <div id="stage-view"><div id="stage-bg"><div id="stage-bgc"></div></div><div id="stage-root"></div></div>
+        <svg id="overlay"></svg>
+      </div>
+      <div id="nodes" style="display:none"></div>
+      <div id="stage-bar">
+        <button data-cmd="nodes" title="Node screen: wire up parents and build masks from several layers">Nodes</button>
+        <button data-cmd="fit" title="Fit the composition in the viewer and keep it fitted when the viewer changes size (zooming or panning switches this off)">Fit</button>
+        <button data-cmd="z100" title="Actual size">100%</button>
+        <span id="zoom-label">50%</span>
+        <label title="Title-safe and action-safe guides"><input type="checkbox" id="guides"> Safe areas</label>
+        <label title="Snap to the frame, its centre and other layers while moving or resizing. Hold Ctrl to switch it off for a moment."><input type="checkbox" id="snap" checked> Snap</label>
+        <span class="grow"></span>
+        <span class="hint" title="Wheel = zoom (pinch on a trackpad), middle-drag, Space-drag or the Hand tool (H) = pan, arrows = nudge, Ctrl = no snap. View > Trackpad scrolling makes two-finger scrolling move the view.">Wheel zoom &#183; H / Space-drag pan</span>
+      </div>
+    </div>
+    <div id="right" class="pn"><div id="insp"></div></div>
+    <div id="pn-assets" class="pn sidep"></div>
+    <div id="pn-control" class="pn sidep"></div>
+    <div id="pn-colours" class="pn sidep"></div>
+    <div id="pn-easing" class="pn sidep"></div>
+    <div id="pn-caspar" class="pn sidep"></div>
+    <div id="pn-data" class="pn sidep"></div>
+    <div id="timeline" class="pn">
+      <div id="tl-bar">
+        <select id="comp-select" title="Composition being edited"></select>
+        <button data-cmd="home" title="First frame (Home)">|&lt;</button>
+        <button data-cmd="prevf" title="Previous frame (,)">&lt;</button>
+        <button data-cmd="play" id="btn-play" class="primary" title="Play / pause (Space)">Play</button>
+        <button data-cmd="nextf" title="Next frame (.)">&gt;</button>
+        <button data-cmd="end" title="Last frame (End)">&gt;|</button>
+        <input type="number" id="tl-frame" min="0" title="Current frame">
+        <span id="tl-time"></span>
+        <span class="sep"></span>
+        <button data-cmd="prevk" title="Previous keyframe (J)">&#9666; Key</button>
+        <button data-cmd="nextk" title="Next keyframe (K)">Key &#9656;</button>
+        <button data-cmd="ease" title="Apply the Ease preset to the selected keyframes (F9)">Easy ease</button>
+        <span class="sep"></span>
+        <button data-cmd="marker" title="Add a stop marker at the playhead (M). play() and next() pause on stop markers.">+ Stop marker</button>
+        <button data-cmd="loop" title="Add a repeat section at the playhead: on air the timeline circles inside it until next, stop or another invoke">+ Repeat section</button>
+        <span class="grow"></span>
+        <span class="hint">Zoom</span>
+        <input type="range" id="tl-zoom" min="1" max="40" step="0.5" value="6">
+      </div>
+      <div id="tl-grid">
+        <div id="tl-lhead"><span>Layers</span><span class="r">Parent</span></div>
+        <div id="tl-ruler-wrap"><div id="tl-ruler"></div></div>
+        <div id="tl-left"></div>
+        <div id="tl-tracks"><div id="tl-inner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../node_modules/lottie-web/build/player/lottie.min.js" onerror="window.__noLottie=true"></script>
+<script src="runtime.js"></script>
+<script src="js/core.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/inspector.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/dataed.js"></script>
+<script src="js/nodes.js"></script>
+<script src="js/dock.js"></script>
+<script src="js/loopic.js"></script>
+<script src="js/io.js"></script>
+</body>
+</html>
