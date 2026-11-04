@@ -100,7 +100,7 @@
         "ext": "cgm",
         "name": "CG Motion project",
         "description": "CG Motion project",
-        "icon": "icon",
+        "icon": "build/icon.ico",
         "mimeType": "application/x-cg-motion",
         "role": "Editor"
       }
