@@ -46,6 +46,9 @@ jobs:
             d=$((s*2)); sips -z $d $d build/icon.png --out icon.iconset/icon_${s}x${s}@2x.png >/dev/null
           done
           iconutil -c icns icon.iconset -o build/icon.icns
+          cp build/icon.icns build/cgm.icns
+          # its own copy for .cgm files (the same file twice makes electron-builder fail on macOS)
+          node -e "const f='package.json',p=JSON.parse(require('fs').readFileSync(f));p.build.fileAssociations.forEach((a)=>{a.icon='build/cgm.icns'});require('fs').writeFileSync(f,JSON.stringify(p,null,2))"
       - name: Build
         shell: bash
         env:
