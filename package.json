@@ -65,7 +65,7 @@
       "artifactName": "CG Motion ${version} Portable.${ext}"
     },
     "mac": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.graphics-design",
       "target": [
         "dmg",
@@ -100,7 +100,7 @@
         "ext": "cgm",
         "name": "CG Motion project",
         "description": "CG Motion project",
-        "icon": "build/icon.ico",
+        "icon": "icon",
         "mimeType": "application/x-cg-motion",
         "role": "Editor"
       }
