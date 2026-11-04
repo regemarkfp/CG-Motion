@@ -2,10 +2,14 @@
   "name": "cg-motion",
   "version": "1.0.0",
   "description": "Timeline-based editor for CasparCG HTML templates",
+  "homepage": "https://regemarkfp.com/software/cg-motion",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis portable --x64"
+    "dist": "electron-builder --win nsis portable --x64",
+    "dist:win": "electron-builder --win nsis portable --x64",
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64",
+    "dist:linux": "electron-builder --linux AppImage deb --x64"
   },
   "dependencies": {
     "lottie-web": "^5.12.2"
@@ -16,7 +20,8 @@
   },
   "productName": "CG Motion",
   "author": {
-    "name": "RegemarkFP"
+    "name": "RegemarkFP",
+    "email": "regemarkofficial@gmail.com"
   },
   "build": {
     "appId": "com.cgmotion.editor",
@@ -52,12 +57,43 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "CG Motion",
-      "artifactName": "CG Motion Setup 1.0.${ext}",
+      "artifactName": "CG Motion Setup ${version}.${ext}",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico"
     },
     "portable": {
-      "artifactName": "CG Motion 1.0 Portable.${ext}"
+      "artifactName": "CG Motion ${version} Portable.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.graphics-design",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "CG Motion ${version} ${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "CG Motion ${version}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Graphics",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "RegemarkFP <regemarkofficial@gmail.com>",
+      "synopsis": "Timeline editor for CasparCG HTML templates",
+      "artifactName": "CG-Motion-${version}-${arch}.${ext}",
+      "mimeTypes": [
+        "application/x-cg-motion"
+      ]
+    },
+    "deb": {
+      "packageName": "cg-motion"
     },
     "fileAssociations": [
       {
@@ -65,6 +101,7 @@
         "name": "CG Motion project",
         "description": "CG Motion project",
         "icon": "build/icon.ico",
+        "mimeType": "application/x-cg-motion",
         "role": "Editor"
       }
     ],

@@ -1,4 +1,4 @@
-// CG Motion - desktop shell (Electron main process)
+// CG Motion - desktop shell (Electron main process). Windows, macOS and Linux.
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -6,12 +6,13 @@ const net = require('net');
 
 let win = null;
 let dirty = false;
-let pending = null;   // a project file to open (double-clicked in Explorer)
+let pending = null; // a project file to open (double-clicked in Explorer / Finder / the file manager)
+const isMac = process.platform === 'darwin';
 
 /* settings (recent projects, panel layout) stay in the same place whether CG Motion runs installed or from the folder */
 app.setPath('userData', path.join(app.getPath('appData'), 'cg-motion'));
 
-/* a .cgm / .loo / .html file passed on the command line, e.g. when it is double-clicked */
+/* a .cgm / .loo / .html file passed on the command line, e.g. when it is double-clicked (Windows, Linux) */
 function fileArg(argv) {
   const args = (argv || []).slice(app.isPackaged ? 1 : 2);
   return args.find((a) => /\.(cgm|loo|html?)$/i.test(a) && fs.existsSync(a)) || null;
@@ -31,6 +32,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 pending = fileArg(process.argv);
+/* macOS hands double-clicked files over with an event instead of the command line */
+app.on('open-file', (e, p) => { e.preventDefault(); if (/\.(cgm|loo|html?)$/i.test(p)) sendOpen(p); });
 
 /* borderless splash with the RegemarkFP logo while the editor loads */
 let splash = null;
@@ -53,7 +56,8 @@ function createWindow() {
     show: false, backgroundColor: '#1b1b1b', title: 'CG Motion', icon: path.join(__dirname, 'app', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
-  Menu.setApplicationMenu(null);
+  // the menus are in the app itself; macOS still needs its own app and Edit menus (Cmd+C / Cmd+V / Cmd+Q work through them)
+  Menu.setApplicationMenu(isMac ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]) : null);
   // floating panel windows: plain child windows that stay above the main window
   win.webContents.setWindowOpenHandler(() => ({
     action: 'allow',
@@ -79,6 +83,7 @@ function createWindow() {
     });
     if (r === 1) e.preventDefault();
   });
+  win.on('closed', () => { win = null; });
 }
 
 ipcMain.on('dirty', (e, d) => { dirty = !!d; });
@@ -109,10 +114,12 @@ ipcMain.handle('open', async () => {
 
 ipcMain.handle('openPath', async (e, p) => ({ path: p, data: await fs.promises.readFile(p, 'utf8') }));
 
-/* the guide PDF ships next to the program (installed), next to the portable exe, or in docs/ while developing */
+/* the guide PDF ships next to the program (installed), next to the portable exe, inside the app on macOS,
+   or in docs/ while developing */
 ipcMain.handle('openGuide', async () => {
   const name = 'CG Motion Guide.pdf';
-  const places = [path.dirname(process.execPath), process.env.PORTABLE_EXECUTABLE_DIR || '', process.resourcesPath || '', path.join(__dirname, 'docs'), __dirname].filter(Boolean);
+  const places = [path.dirname(process.execPath), process.env.PORTABLE_EXECUTABLE_DIR || '', process.resourcesPath || '',
+    isMac ? path.join(path.dirname(process.execPath), '..') : '', process.env.APPDIR || '', path.join(__dirname, 'docs'), __dirname].filter(Boolean);
   for (const d of places) {
     const f = path.join(d, name);
     if (fs.existsSync(f)) { const err = await shell.openPath(f); return err ? { error: err } : { path: f }; }
@@ -170,4 +177,6 @@ ipcMain.handle('amcp', (e, o) => new Promise((resolve, reject) => {
 }));
 
 app.whenReady().then(createWindow);
+// macOS: clicking the Dock icon with no window open opens one again
+app.on('activate', () => { if (!win && app.isReady()) createWindow(); });
 app.on('window-all-closed', () => app.quit());
