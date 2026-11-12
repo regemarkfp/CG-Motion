@@ -49,6 +49,18 @@ Loopic code is not run. The common patterns are converted instead:
 
 Anything else is listed in the report shown after the import so you can rebuild it. Masks clip to the mask's shape (its colour and opacity are ignored) and several masks on one layer intersect. Compare each template with the original before going on air.
 
+### Importing vMix titles
+
+**File > Import vMix titles (.gtzip)...** (or the start screen button) turns vMix GT titles into compositions; select several at once and each becomes its own composition in one project. Layout, pictures, text (font, size, weight, alignment, Uppercase, Shrink), masks, crops, skew and shadows come across; the In storyboard plays to a stop marker and the Out storyboard plays on CG NEXT / STOP (Fly, Fade, Zoom, Expand, Reveal as keyframes, with objects hidden outside their vMix layer while they fly). Text objects become fields named after the vMix object (spaces become `_`), image objects become replaceable pictures, data rectangles become colour fields. A .gtzip has no fonts: add them under Assets > Fonts or install them on the CasparCG PC. The report shows vMix's previews to compare.
+
+### Importing Photoshop files
+
+**File > Import Photoshop file (.psd)...** (or open a .psd / .psb) turns a layered file into a composition at the document's size. Pixel layers become pictures in place (opacity, blend mode, visibility kept), groups become nulls their layers follow, text layers become editable text fields named after the layer, layer masks are baked in, clipping masks become mattes and drop shadows come across. RGB, CMYK, greyscale and indexed files in 8/16/32 bit are supported. After Effects and DaVinci Resolve/Fusion files can't be read directly yet; opening one explains the Lottie / PNG-sequence / PSD routes.
+
+### Importing Affinity files
+
+**File > Import Affinity file (.af, .afphoto, .afdesign)...** (or open the file) reads Affinity Photo, Designer and Publisher documents (versions 1-3, including Affinity by Canva's .af) directly. Each artboard becomes a composition; layers and groups become nulls; text becomes editable fields; plain rectangles and ellipses become editable shapes; other vectors, gradients and masked artwork are drawn into pictures; pixel layers and placed images become pictures. Drop shadow and Gaussian blur map onto the layer's shadow and blur; colour overlay and outline are baked in. Large groups of plain vector art become one picture each. The report shows Affinity's own preview for comparison; if a file can't be read, that preview is imported instead. The reader (app/js/affinity.js, afmodel.js, afimport.js, zstd.js) follows the public afread and vectorcraft descriptions; see NOTICE.md.
+
 ### Smooth playback
 
 - **Optimise sequences for playback** (File menu, or the button in the Assets tab) cuts every frame of an image sequence down to the area that has pixels. Broadcast sequences are usually full 1920x1080 pictures with a small graphic in them, and unpacking those every frame is what makes a template stutter. The picture is identical. Sequences you import are optimised automatically; Loopic imports offer it in the import report.
@@ -152,3 +164,35 @@ V T R O tools · arrows nudge (Shift = 10) · Ctrl+D duplicate · Ctrl+Shift+C p
 - Fonts are named after their file (Montserrat-Bold.ttf becomes "Montserrat-Bold"). Import each weight you need.
 - Image sequences live inside the template, so keep them short; the WebP option on import cuts size a lot.
 - Lottie: import the Lottie JSON export (not .lottie). Text layers in the Lottie can be given field names.
+
+### If CG Motion opens to an empty window
+
+After 12 seconds without the editor appearing, CG Motion offers to restart without graphics acceleration (remembered), reset the panel layout, or show the error details. A graphics-driver crash restarts it without acceleration automatically. `Start CG Motion (safe mode).bat` starts without acceleration and with the default layout. Startup errors show in a red box; the log is `%APPDATA%\cg-motion\cg-motion.log`; delete `no-gpu` in that folder to turn acceleration back on.
+
+### Variables sheet (PDF)
+
+File > Export variables sheet (PDF, all templates)... (or Export PDF in the Control panel) makes one PDF for the project: per template a still frame at its hold point, its fields, cell fields and invokes, and a ready CG ADD command with the default data.
+
+### Fonts embedded on export
+
+Exporting embeds every font a template's text uses (each weight and italic) from the fonts installed on the PC (fontindex.js indexes Windows' system and per-user font folders, cached in the user data folder). Fonts under Assets > Fonts take priority; fonts that aren't installed or whose licence forbids embedding (OS/2 fsType restricted) are listed in the status bar.
+
+### Exporting from a pre-comp
+
+Export template (Ctrl+E) and the CasparCG panel write the template the open composition belongs to: every top-level composition that uses it. File > Export this composition on its own writes just the open composition.
+
+### Field suffix on composition layers
+
+A composition layer's Field suffix (e.g. _L) is added to every field name inside it (TIME1 -> TIME1_L), so two pre-comps with the same field names get their own fields; the plain name still fills copies without their own value. The Control panel detects clashing pre-comps and offers "Give each its own fields". Renaming a layer renames its field when the field still carries the layer's name.
+
+### Update animations
+
+Layers with a field have an Update animation (Inspector): presets (fade, slides, pop, flip, flash, count) or custom keyframes on the layer's own update timeline (app/js/updanim.js), with channels as offsets (position, scale, scale Y, rotation, opacity, blur) and an update marker for the frame where the new value appears. The runtime plays it on UPDATE when a field's value changes (Player.updated / updFx / held values in runtime.js).
+
+### Text animation (letters, words, lines)
+
+Text layers have a Text animation section (Inspector): split by letter, word or line, with In and Out presets (rise, drop, fade, slide, scale up, zoom out, blur, typewriter, flip, spin), frames per unit, stagger and order (forward, backward, centre, edges, random). The update animation also has a Per letter / word option that takes the old text out unit by unit and brings the new text in. In runtime.js: splitUnits / unitPose / taPose, and the 'units' preset in Player.updated.
+
+### Rebuilding the guide PDF
+
+`python3 tools/make_guide_html.py && node tools/make_guide_pdf.js` builds `docs/CG Motion Guide.pdf` from docs/guide.md, with the pictures from docs/images (index.json maps each caption to its file).

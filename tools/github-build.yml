@@ -51,6 +51,8 @@ jobs:
             $extra = @("-c.extraMetadata.version=$sem", "-c.nsis.artifactName=CG Motion Setup $v.`${ext}", "-c.portable.artifactName=CG Motion $v Portable.`${ext}")
           }
           npx electron-builder --win nsis portable --x64 --publish never @extra
+          node tools/check-build.js
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           Copy-Item 'docs/CG Motion Guide.pdf' dist/
 
       - name: Keep the files with this run

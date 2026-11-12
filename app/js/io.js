@@ -12,10 +12,20 @@ var Api = {
   },
   open: function () {
     if (N) return N.open();
-    return UI.pickFiles('.cgm,.html,.json,.loo').then(function (fs) {
+    return UI.pickFiles('.cgm,.html,.json,.loo,.gtzip,.psd,.psb,.af,.afphoto,.afdesign,.afpub,.aftemplate,.aep,.comp,.setting', true).then(function (fs) {
       if (!fs.length) return null;
+      var gt = fs.filter(function (f) { return /\.gtzip$/i.test(f.name); });
+      if (gt.length) return Api.readGt(gt);
+      if (/\.(psd|psb|af|afphoto|afdesign|afpub|aftemplate|aep)$/i.test(fs[0].name)) return fs[0].arrayBuffer().then(function (b) { return { path: fs[0].name, bytes: new Uint8Array(b) }; });
       return UI.readFile(fs[0], 'text').then(function (t) { return { path: fs[0].name, data: t }; });
     });
+  },
+  openGt: function () {
+    if (N && N.openGt) return N.openGt();
+    return UI.pickFiles('.gtzip', true).then(function (fs) { return fs.length ? Api.readGt(fs) : null; });
+  },
+  readGt: function (fs) {
+    return Promise.all(fs.map(function (f) { return f.arrayBuffer().then(function (b) { return { path: f.name, bytes: new Uint8Array(b) }; }); })).then(function (l) { return { gtzips: l }; });
   },
   readApp: function (rel) {
     if (N) return N.readApp(rel);
@@ -43,6 +53,7 @@ IO.open = function () {
   if (!IO.confirmLose()) return;
   Api.open().then(function (r) {
     if (!r) return;
+    if (IO.openOther(r)) return;
     if (Loopic.is(r.data, r.path)) {
       return Loopic.open(r.data, r.path).then(function () { IO.hideStart(); }).catch(function (e) { UI.status('Could not import that Loopic file: ' + e.message, true); });
     }
@@ -53,6 +64,49 @@ IO.open = function () {
       UI.status(isProj ? 'Opened ' + r.path : 'Opened from an exported template. Use Save to keep a project file.');
     } catch (e) { UI.status('Could not open that file: ' + e.message); }
   });
+};
+/* files that are not CG Motion projects: vMix titles, Photoshop files, and the ones that need exporting first */
+IO.openOther = function (r) {
+  var path = r.path || '', bytes = function () { return r.bytes || VMix.b64(r.b64); };
+  if (r.gtzips || /\.gtzip$/i.test(path)) { IO.openGt(r.gtzips || [r]); return true; }
+  if (PSD.is(path)) { PSD.open(bytes(), path).then(function () { IO.hideStart(); }).catch(function (e) { UI.status('Could not import that Photoshop file: ' + e.message, true); }); return true; }
+  if (AFI.is(path)) { AFI.open(bytes(), path).then(function () { IO.hideStart(); }).catch(function (e) { UI.status('Could not import that Affinity file: ' + e.message, true); }); return true; }
+  var how = {
+    aep: ['After Effects', 'After Effects projects cannot be read directly yet. For now: export the composition as a Lottie file with the Bodymovin plugin and add it under Assets > Lottie, or render it as a PNG sequence with alpha and add it under Assets > Sequence. For a still layout, Composition > Save Frame As > Photoshop Layers... gives a .psd you can import here.'],
+    comp: ['Fusion', 'Fusion compositions cannot be imported yet. For now: render the composition from Fusion or DaVinci Resolve as a PNG sequence with alpha and add it under Assets > Sequence.'],
+    setting: ['Fusion', 'Fusion titles (.setting) cannot be imported yet. For now: render the title from DaVinci Resolve as a PNG sequence with alpha and add it under Assets > Sequence.']
+  }[(/\.([a-z0-9]+)$/i.exec(path) || [])[1] ? (/\.([a-z0-9]+)$/i.exec(path)[1]).toLowerCase() : ''];
+  if (how) { IO.explain(how[0] + ' file', how[1]); return true; }
+  return false;
+};
+IO.explain = function (title, text) {
+  var host = UI.doc.body;
+  function close() { if (bg.parentNode) host.removeChild(bg); }
+  var bg = h('div', { class: 'modal-bg' }, h('div', { class: 'modal' }, [h('div', { class: 'modal-title', text: title }), h('p', { text: text }), h('div', { class: 'modal-btns' }, [h('button', { class: 'primary', text: 'OK', onclick: close })])]));
+  host.appendChild(bg); bg.querySelector('button').focus();
+};
+IO.importAffinity = function () {
+  if (!IO.confirmLose()) return;
+  UI.pickFiles('.af,.afphoto,.afdesign,.afpub,.aftemplate').then(function (fs) {
+    if (!fs.length) return;
+    fs[0].arrayBuffer().then(function (b) { IO.openOther({ path: fs[0].name, bytes: new Uint8Array(b) }); });
+  });
+};
+IO.importPsd = function () {
+  if (!IO.confirmLose()) return;
+  UI.pickFiles('.psd,.psb').then(function (fs) {
+    if (!fs.length) return;
+    fs[0].arrayBuffer().then(function (b) { IO.openOther({ path: fs[0].name, bytes: new Uint8Array(b) }); });
+  });
+};
+/* vMix titles: [{path, b64 | bytes}] -> a project with a composition per title */
+IO.openGt = function (list) {
+  var files = list.map(function (f) { return { name: f.path, bytes: f.bytes || VMix.b64(f.b64) }; });
+  return VMix.open(files).then(function () { IO.hideStart(); }).catch(function (e) { UI.status('Could not import those vMix titles: ' + e.message, true); });
+};
+IO.importGt = function () {
+  if (!IO.confirmLose()) return;
+  Api.openGt().then(function (r) { if (r && r.gtzips) IO.openGt(r.gtzips); });
 };
 IO.save = function (as) {
   var data = JSON.stringify(App.project), pr = App.project, done;
@@ -79,6 +133,7 @@ IO.addRecent = function (path) {
 IO.openFile = function (path) {
   if (!IO.confirmLose()) return;
   return Api.openPath(path).then(function (r) {
+    if (IO.openOther(r)) return;
     if (typeof Loopic !== 'undefined' && Loopic.is(r.data, path)) return Loopic.open(r.data, path).then(function () { IO.hideStart(); });
     var isProj = /\.cgm$/i.test(path);
     App.load(IO.parse(r.data), isProj ? path : null);
@@ -139,7 +194,8 @@ IO.showStart = function (newForm) {
     box.appendChild(h('div', { class: 'start-h' }, [h('img', { class: 'start-logo', src: 'logo.png', alt: 'RegemarkFP' }), h('div', {}, [h('div', { class: 'start-title', text: 'CG Motion' }), h('div', { class: 'hint', text: 'Templates for CasparCG  ·  by RegemarkFP' + (IO.version ? '  ·  Version ' + IO.version : '') })])]));
     box.appendChild(h('div', { class: 'pbar' }, [
       h('button', { class: 'primary big', text: 'New project', onclick: form }),
-      h('button', { class: 'big', text: 'Open project...', title: 'CG Motion projects (.cgm), exported templates (.html) and Loopic projects (.loo)', onclick: function () { IO.open(); } }),
+      h('button', { class: 'big', text: 'Open project...', title: 'CG Motion projects (.cgm), exported templates (.html), Loopic projects (.loo) and vMix titles (.gtzip)', onclick: function () { IO.open(); } }),
+      h('button', { class: 'big', text: 'Import vMix titles...', title: 'Turn vMix GT titles (.gtzip) into CasparCG templates: pick one or several, each becomes a composition', onclick: function () { IO.importGt(); } }),
       h('button', { class: 'big', text: 'Tutorial project', title: 'Open the example project: a lower third, a table, charts, a crawl and more, ready to take apart', onclick: function () { IO.openTutorial(); } }),
       h('span', { class: 'grow' }),
       h('button', { text: 'Close', title: 'Back to the editor', onclick: IO.hideStart })
@@ -225,8 +281,51 @@ IO.exportProject = function (compId) {
   return out;
 };
 
+/* the fonts a template's text uses, embedded from the fonts installed on this computer (desktop app) */
+IO.GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|inherit|initial)$/i;
+IO.embedSystemFonts = async function (p) {
+  var rep = { embedded: [], missing: [], restricted: [] };
+  if (!N || !N.fontFaces) return rep;
+  var have = {}, want = {}, k;
+  for (k in App.project.assets) if (App.project.assets[k].type === 'font') have[String(App.project.assets[k].family).toLowerCase()] = 1;
+  function use(fam, w, it) {
+    fam = String(fam || '').trim(); if (!fam || IO.GENERIC.test(fam) || have[fam.toLowerCase()]) return;
+    w = Math.round((+w || 400) / 100) * 100; it = !!(it === true || it === 'on');
+    want[fam.toLowerCase() + '|' + w + '|' + it] = { family: fam, weight: w, italic: it };
+  }
+  p.comps.forEach(function (c) { c.layers.forEach(function (L) {
+    if (!/^(text|table|chart|crawl)$/.test(L.type)) return;
+    var f = L.font || 'Arial', w = L.weight || 400;
+    use(f, w, L.italic);
+    if (L.type !== 'text') use(f, 700, false);
+    if (L.split && L.split.on) use(L.split.font || f, L.split.weight || w, L.split.italic);
+    if (L.styles && L.styles.on) (L.styles.segs || []).forEach(function (sg) { use(sg.font || f, sg.weight || w, sg.italic === 'off' ? false : (sg.italic || L.italic)); });
+  }); });
+  var list = Object.keys(want).map(function (x) { return want[x]; });
+  if (!list.length) return rep;
+  var got = await N.fontFaces(list), files = {};
+  got.forEach(function (g) {
+    var label = g.family + (g.weight && g.weight !== 400 ? ' ' + g.weight : '') + (g.italic ? ' italic' : '');
+    if (g.missing) { rep.missing.push(label); return; }
+    if (g.restricted) { rep.restricted.push(label); return; }
+    var id = 'sysfont_' + (g.family + '_' + (g.exact ? g.faceWeight + (g.faceItalic ? 'i' : '') : g.file)).replace(/[^A-Za-z0-9_]/g, '_');
+    if (files[id]) return; files[id] = 1;
+    p.assets[id] = { id: id, type: 'font', name: g.file, family: g.family, src: g.src, weight: g.exact ? g.faceWeight : undefined, italic: g.exact ? g.faceItalic : undefined, embedded: true };
+    rep.embedded.push(label);
+  });
+  return rep;
+};
+IO.fontNote = function (r) {
+  if (!r) return '';
+  var s = [];
+  if (r.embedded.length) s.push('fonts embedded: ' + r.embedded.join(', '));
+  if (r.missing.length) s.push('not installed on this PC (add them under Assets > Fonts): ' + r.missing.join(', '));
+  if (r.restricted.length) s.push('licence does not allow embedding: ' + r.restricted.join(', '));
+  return s.length ? '  -  ' + s.join('; ') : '';
+};
 IO.buildHTML = async function (compId) {
   var p = IO.exportProject(compId || App.compId), root = App.comp(p.rootComp), usesLottie = false;
+  try { IO.lastFonts = await IO.embedSystemFonts(p); } catch (e) { IO.lastFonts = null; }
   p.comps.forEach(function (c) { c.layers.forEach(function (L) { if (L.type === 'lottie') usesLottie = true; }); });
   var rt = await Api.readApp('runtime.js'), lot = '';
   if (usesLottie) {
@@ -255,11 +354,38 @@ IO.buildHTML = async function (compId) {
     (lot ? '<script>' + safe(lot) + '</script>\n' : '') +
     '<script>' + safe(rt) + '</script>\n<script>' + boot + '</script>\n</body>\n</html>\n';
 };
-IO.exportTemplate = function () {
-  var folder = App.project.exportFolder, name = IO.safeName() + '.html';
-  return IO.buildHTML().then(function (html) {
+/* the template(s) a composition belongs to: itself when nothing uses it, otherwise every top-level composition that contains it */
+IO.templatesFor = function (id) {
+  id = id || App.compId;
+  var roots = IO.templateIds();
+  if (roots.indexOf(id) >= 0) return [id];
+  var out = roots.filter(function (r) {
+    var seen = {};
+    return (function has(c, d) {
+      if (c === id) return true;
+      if (seen[c] || d > 8) return false; seen[c] = 1;
+      return App.comp(c).layers.some(function (L) { return L.type === 'comp' && has(L.comp, d + 1); });
+    })(r, 0);
+  });
+  return out.length ? out : [id];
+};
+/* run fn with another composition counted as the open one (names, fields and invokes follow it) */
+IO.asComp = function (id, fn) { var keep = App.compId; App.compId = id; try { return fn(); } finally { App.compId = keep; } };
+IO.writeTemplate = function (id, folder) {
+  var name = IO.asComp(id, function () { return IO.safeName(); }) + '.html';
+  return IO.buildHTMLFor(id).then(function (html) {
     var done = (folder && Api.desktop) ? Api.writeTo(folder, name, html) : Api.save({ name: name, path: null, data: html, kind: 'template' });
-    return done.then(function (p) { if (p) UI.status('Exported "' + App.comp().name + '" to ' + p + '  (' + (html.length / 1048576).toFixed(2) + ' MB)'); return p; });
+    return done.then(function (p) { return p ? { path: p, name: App.comp(id).name, mb: html.length / 1048576 } : null; });
+  });
+};
+/* Export template: the template the open composition belongs to (a pre-comp exports the template(s) using it) */
+IO.exportTemplate = function (onlyThis) {
+  var folder = App.project.exportFolder, open = App.comp(), ids = onlyThis ? [open.id] : IO.templatesFor(open.id), done = [];
+  return ids.reduce(function (pr, id) { return pr.then(function () { return IO.writeTemplate(id, folder).then(function (r) { if (r) done.push(r); }); }); }, Promise.resolve()).then(function () {
+    if (!done.length) return null;
+    var via = ids.length && ids[0] !== open.id ? '"' + open.name + '" is part of ' + done.map(function (r) { return '"' + r.name + '"'; }).join(', ') + ', so that was exported: ' : '';
+    UI.status(via + (done.length === 1 ? 'exported "' + done[0].name + '" to ' + done[0].path + '  (' + done[0].mb.toFixed(2) + ' MB)' : 'exported ' + done.map(function (r) { return r.path; }).join(', ')) + IO.fontNote(IO.lastFonts));
+    return done.length === 1 ? done[0].path : done.map(function (r) { return r.path; });
   }).catch(function (e) { UI.status('Export failed: ' + e.message, true); });
 };
 /* The variables of the open template as CSV: one row per field, plus one row per invoke. */
@@ -285,8 +411,126 @@ IO.exportCSV = function () {
   var done = (folder && Api.desktop) ? Api.writeTo(folder, name, csv) : Api.save({ name: name, path: null, data: csv, kind: 'csv' });
   return done.then(function (p) { if (p) UI.status('Variables exported to ' + p); return p; }).catch(function (e) { UI.status('CSV export failed: ' + e.message, true); });
 };
+/* ================= variables sheet (PDF): every template's fields and invokes, with a still frame ================= */
+/* templates = compositions that are not used inside another composition */
+IO.templateIds = function () {
+  var used = {}, cs = App.project.comps;
+  cs.forEach(function (c) { c.layers.forEach(function (L) { if (L.type === 'comp') used[L.comp] = 1; }); });
+  var roots = cs.filter(function (c) { return !used[c.id]; });
+  return (roots.length ? roots : cs).map(function (c) { return c.id; });
+};
+/* the hold point: the first stop marker, or the middle of the timeline */
+IO.holdFrame = function (c) {
+  var m = (c.markers || []).map(function (x) { return typeof x === 'number' ? x : x.t; }).filter(function (t) { return t > 0; }).sort(function (a, b) { return a - b; });
+  return m.length ? Math.max(0, Math.min(c.duration - 1, m[0])) : Math.round((c.duration - 1) / 2);
+};
+IO.templateInfo = function (id) {
+  var keep = App.compId; App.compId = id;
+  try {
+    var c = App.comp(id), p = IO.exportProject(id), names = {};
+    p.comps.forEach(function (k) { k.layers.forEach(function (L) { names[L.id] = L.name; }); });
+    var cas = App.project.caspar || { channel: 1, layer: 20 }, seen = {};
+    var invokes = (p.actions || []).filter(function (a) { if (seen[a.name]) return false; seen[a.name] = 1; return true; }).map(function (a) {
+      return { name: a.name, plays: a.target && a.target !== 'main' ? (names[a.target] || 'a composition layer') : 'Main timeline', from: a.from, to: a.to, loop: a.loop || '',
+        cmd: 'CG ' + cas.channel + '-' + cas.layer + ' INVOKE 1 "' + a.name + '"' };
+    });
+    var fields = Panels.fieldList();
+    var data = {}; fields.forEach(function (f) { if (!f.cell) data[f.key] = f.def == null ? '' : String(f.def); });
+    return { id: id, name: c.name, file: IO.safeName(c.name), w: c.w, h: c.h, fps: c.fps, duration: c.duration, frame: IO.holdFrame(c), fields: fields, invokes: invokes,
+      markers: (c.markers || []).length, add: 'CG ' + cas.channel + '-' + cas.layer + ' ADD 1 "' + IO.safeName(c.name) + '" 1 "' + JSON.stringify(data).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"' };
+  } finally { App.compId = keep; }
+};
+IO.buildHTMLFor = function (id) { var keep = App.compId; App.compId = id; return IO.buildHTML(id).then(function (h) { App.compId = keep; return h; }, function (e) { App.compId = keep; throw e; }); };
+/* a still frame of a template as CasparCG shows it: desktop renders the exported template off screen */
+IO.still = function (t) {
+  if (!N || !N.snapshot) return Promise.resolve(null);
+  return IO.buildHTMLFor(t.id).then(function (html) { return N.snapshot({ html: html, w: t.w, h: t.h, frame: t.frame }); }).catch(function () { return null; });
+};
+IO.sheetHTML = function (list, opts) {
+  opts = opts || {};
+  function e(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  var TYPES = { text: 'Text', image: 'Picture', colour: 'Colour', number: 'Number', toggle: 'On / off', 'lottie text': 'Text', value: 'Value' };
+  var p = App.project, cas = p.caspar || {}, date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  var totF = 0, totI = 0; list.forEach(function (t) { totF += t.fields.length; totI += t.invokes.length; });
+  var css = '@page{size:A4;margin:14mm 13mm 16mm}*{box-sizing:border-box}body{margin:0;font:9.5pt/1.45 "Segoe UI",Inter,Arial,sans-serif;color:#1d2125;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.cover{display:flex;align-items:center;gap:14px;padding:0 0 10px;border-bottom:3px solid #00c26a;margin-bottom:12px}.cover img{height:46px}.cover h1{margin:0;font-size:20pt;letter-spacing:-.3px}.cover .sub{color:#5b6670;font-size:9pt}' +
+    '.summary{display:flex;gap:8px;margin:0 0 14px}.summary div{flex:1;background:#f3f6f8;border-radius:6px;padding:7px 10px}.summary b{display:block;font-size:14pt}.summary span{color:#5b6670;font-size:8pt}' +
+    '.toc{columns:2;margin:0 0 16px;padding:0;list-style:none;font-size:9pt}.toc li{padding:1px 0}.toc b{color:#00a85c}' +
+    '.tpl{break-before:page}.tpl.first{break-before:auto}.th{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #00c26a;padding-bottom:4px;margin-bottom:8px}.th h2{margin:0;font-size:15pt}.th .meta{color:#5b6670;font-size:8.5pt}' +
+    '.frame{position:relative;border-radius:6px;overflow:hidden;margin:0 0 10px;background:#25282b;background-image:linear-gradient(45deg,#2c3034 25%,transparent 25%,transparent 75%,#2c3034 75%),linear-gradient(45deg,#2c3034 25%,transparent 25%,transparent 75%,#2c3034 75%);background-size:16px 16px;background-position:0 0,8px 8px}' +
+    '.frame img,.frame iframe{display:block;width:100%;border:0}.frame .tag{position:absolute;right:8px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;font-size:7.5pt;padding:2px 6px;border-radius:3px}.noframe{padding:28px;text-align:center;color:#9aa4ad}' +
+    'h3{font-size:10.5pt;margin:12px 0 5px;color:#0b7a46}table{width:100%;border-collapse:collapse;font-size:8.6pt;break-inside:auto}tr{break-inside:avoid}th{text-align:left;background:#e9f9f0;color:#0b5c36;font-weight:600;padding:4px 6px;border-bottom:1px solid #b9e6cd}' +
+    'td{padding:4px 6px;border-bottom:1px solid #e3e8ec;vertical-align:top}td.k{font-family:Consolas,"Courier New",monospace;font-weight:600;white-space:nowrap}td.d{color:#3b444c;max-width:60mm;word-break:break-word}.sw{display:inline-block;width:9px;height:9px;border-radius:2px;border:1px solid #0003;vertical-align:-1px;margin-right:4px}' +
+    'code,.cmd{font-family:Consolas,"Courier New",monospace;font-size:8pt}.cmd{display:block;background:#f3f6f8;border-radius:4px;padding:6px 8px;word-break:break-all;white-space:pre-wrap}.none{color:#8a949c;font-style:italic}.cell td{color:#5b6670}.foot{margin-top:10px;color:#8a949c;font-size:7.5pt}';
+  var out = ['<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + e(p.name) + ' - variables</title><style>' + css + '</style></head><body>'];
+  out.push('<div class="cover">' + (opts.logo ? '<img src="' + opts.logo + '">' : '') + '<div><h1>' + e(p.name || 'CG Motion project') + '</h1><div class="sub">Template variables and invokes &middot; ' + e(date) + ' &middot; CasparCG ' + e((cas.channel || 1) + '-' + (cas.layer || 20)) + '</div></div></div>');
+  out.push('<div class="summary"><div><b>' + list.length + '</b><span>template' + (list.length === 1 ? '' : 's') + '</span></div><div><b>' + totF + '</b><span>fields</span></div><div><b>' + totI + '</b><span>invokes</span></div></div>');
+  if (list.length > 1) out.push('<ul class="toc">' + list.map(function (t, i) { return '<li><b>' + (i + 1) + '</b> ' + e(t.name) + ' <span style="color:#8a949c">(' + t.fields.filter(function (f) { return !f.cell; }).length + ' fields, ' + t.invokes.length + ' invokes)</span></li>'; }).join('') + '</ul>');
+  list.forEach(function (t, i) {
+    out.push('<section class="tpl' + (i === 0 ? ' first' : '') + '"><div class="th"><h2>' + e(t.name) + '</h2><span class="meta">' + e(t.file) + '.html &middot; ' + t.w + '&times;' + t.h + ' &middot; ' + t.fps + ' fps &middot; ' + (Math.round(t.duration / t.fps * 10) / 10) + ' s</span></div>');
+    if (t.still) out.push('<div class="frame"><img src="' + t.still + '"><span class="tag">frame ' + t.frame + '</span></div>');
+    else if (opts.live && t.html) out.push('<div class="frame" style="aspect-ratio:' + t.w + '/' + t.h + '"><iframe data-frame="' + t.frame + '" style="width:' + t.w + 'px;height:' + t.h + 'px;transform-origin:0 0" srcdoc="' + e(t.html) + '"></iframe><span class="tag">frame ' + t.frame + '</span></div>');
+    else out.push('<div class="frame noframe">No preview</div>');
+    var main = t.fields.filter(function (f) { return !f.cell; }), cells = t.fields.filter(function (f) { return f.cell; });
+    out.push('<h3>Fields (' + main.length + ')</h3>');
+    if (main.length) {
+      out.push('<table><tr><th>Field</th><th>Type</th><th>Default</th><th>What it is</th></tr>');
+      main.forEach(function (f) {
+        var def = f.def == null ? '' : String(f.def), sw = f.kind === 'colour' && /^#/.test(def) ? '<span class="sw" style="background:' + e(def) + '"></span>' : '';
+        out.push('<tr><td class="k">' + e(f.key) + '</td><td>' + e(TYPES[f.kind] || 'Text') + '</td><td class="d">' + sw + (def ? e(def.length > 140 ? def.slice(0, 140) + '...' : def).replace(/\n/g, '<br>') : '<span class="none">empty</span>') + '</td><td class="d">' + e(f.hint || '') + (f.copy != null ? ' (copy ' + e(f.copy) + ')' : '') + '</td></tr>');
+      });
+      out.push('</table>');
+    } else out.push('<p class="none">This template has no fields.</p>');
+    if (cells.length) {
+      out.push('<h3>Cell fields (' + cells.length + ')</h3><table class="cell"><tr><th>Field</th><th>Type</th><th>Default</th><th>What it is</th></tr>');
+      cells.forEach(function (f) { out.push('<tr><td class="k">' + e(f.key) + '</td><td>' + e(TYPES[f.kind] || 'Text') + '</td><td class="d">' + e(f.def == null ? '' : f.def) + '</td><td class="d">' + e(f.hint || '') + '</td></tr>'); });
+      out.push('</table>');
+    }
+    out.push('<h3>Invokes (' + t.invokes.length + ')</h3>');
+    if (t.invokes.length) {
+      out.push('<table><tr><th>Invoke</th><th>Plays</th><th>Frames</th><th>CasparCG command</th></tr>');
+      t.invokes.forEach(function (a) { out.push('<tr><td class="k">' + e(a.name) + '</td><td>' + e(a.plays) + '</td><td>' + e(a.from) + '&ndash;' + e(a.to) + (a.loop ? ' (' + e(a.loop === 'pingpong' ? 'back and forth' : 'loops') + ')' : '') + '</td><td><code>' + e(a.cmd) + '</code></td></tr>'); });
+      out.push('</table>');
+    } else out.push('<p class="none">No invokes.</p>');
+    out.push('<h3>Load it with its default data</h3><div class="cmd">' + e(t.add) + '</div>');
+    out.push('<p class="foot">Then CG ' + e((cas.channel || 1) + '-' + (cas.layer || 20)) + ' NEXT plays on from a stop marker, and STOP plays it out' + (t.markers ? '' : ' (this template has no stop marker)') + '. UPDATE sends new field data.</p></section>');
+  });
+  out.push('</body></html>');
+  return out.join('');
+};
+IO.exportVariablesPDF = function () {
+  var ids = IO.templateIds(), list = ids.map(IO.templateInfo);
+  var name = IO.safeName(App.project.name || 'CG Motion') + ' - variables.pdf';
+  UI.status('Making the variables sheet (' + list.length + ' template' + (list.length === 1 ? '' : 's') + ')...', true);
+  var logo = fetch('logo.png').then(function (r) { return r.blob(); }).then(function (b) { return new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(b); }); }).catch(function () { return null; });
+  if (!N || !N.savePdf) {
+    /* browser: a print window with live frames; choose "Save as PDF" */
+    return Promise.all([logo].concat(list.map(function (t) { return IO.buildHTMLFor(t.id).then(function (h) { t.html = h; }); }))).then(function (r) {
+      var html = IO.sheetHTML(list, { logo: r[0], live: true }), w = window.open('', '_blank');
+      if (!w) { UI.status('Allow pop-ups to make the variables sheet.', true); return null; }
+      w.document.open(); w.document.write(html); w.document.close();
+      w.addEventListener('load', function () {
+        w.document.querySelectorAll('iframe[data-frame]').forEach(function (f) {
+          var fit = function () { f.style.transform = 'scale(' + (f.parentNode.clientWidth / parseFloat(f.style.width)) + ')'; }; fit();
+          f.addEventListener('load', function () { try { f.contentWindow.gotoFrame(+f.dataset.frame); } catch (er) {} });
+        });
+        setTimeout(function () { w.focus(); w.print(); }, 1200);
+      });
+      UI.status('Variables sheet opened: choose "Save as PDF" in the print dialog.');
+      return w;
+    });
+  }
+  return logo.then(function (lg) {
+    return list.reduce(function (pr, t) { return pr.then(function () { return IO.still(t).then(function (s) { t.still = s; }); }); }, Promise.resolve()).then(function () {
+      var html = IO.sheetHTML(list, { logo: lg });
+      return N.savePdf({ html: html, name: name, folder: App.project.exportFolder || '' });
+    });
+  }).then(function (p) { if (p) UI.status('Variables sheet saved: ' + p); return p; }).catch(function (e) { UI.status('Could not make the variables sheet: ' + e.message, true); });
+};
+/* CasparCG panel: writes the template the open composition belongs to */
 IO.exportTo = function (folder) {
-  return IO.buildHTML().then(function (html) { return Api.writeTo(folder, IO.safeName() + '.html', html); }).then(function (p) { UI.status('Exported ' + p); return p; });
+  var id = IO.templatesFor(App.compId)[0];
+  return IO.writeTemplate(id, folder).then(function (r) { if (r) UI.status('Exported ' + r.path + IO.fontNote(IO.lastFonts)); return r && r.path; });
 };
 
 /* ================= toolbar, shortcuts, start ================= */
@@ -310,7 +554,7 @@ Main.del = function () {
   } else if (App.sel.length) { App.deleteLayers(App.sel.slice()); App.commit(); App.emit('sel'); }
 };
 Main.cmds = {
-  csv: function () { IO.exportCSV(); }, tutorial: function () { IO.openTutorial(); }, guide: function () { Api.openGuide().then(function (r) { UI.status(r && r.error ? r.error : 'Opened the guide.', !!(r && r.error)); }); }, shortcuts: function () { IO.showShortcuts(); }, optimise: function () { Panels.optimiseAll(); }, copy: function () { App.copy(); }, paste: function () { App.paste(); },
+  csv: function () { IO.exportCSV(); }, varsPdf: function () { IO.exportVariablesPDF(); }, tutorial: function () { IO.openTutorial(); }, importGt: function () { IO.importGt(); }, importPsd: function () { IO.importPsd(); }, importAffinity: function () { IO.importAffinity(); }, guide: function () { Api.openGuide().then(function (r) { UI.status(r && r.error ? r.error : 'Opened the guide.', !!(r && r.error)); }); }, shortcuts: function () { IO.showShortcuts(); }, optimise: function () { Panels.optimiseAll(); }, copy: function () { App.copy(); }, paste: function () { App.paste(); },
   selall: function () { App.sel = App.comp().layers.map(function (L) { return L.id; }); App.emit('sel'); },
   up: function () { App.moveLayers(-1); }, down: function () { App.moveLayers(1); },
   toolText: function () { Main.setTool('text'); }, toolRect: function () { Main.setTool('rect'); }, toolEllipse: function () { Main.setTool('ellipse'); }, toolHand: function () { Main.setTool(App.tool === 'hand' ? 'select' : 'hand'); },
@@ -318,7 +562,7 @@ Main.cmds = {
   guidesT: function () { App.ui.guides = !App.ui.guides; $('#guides').checked = App.ui.guides; Stage.drawOverlay(); },
   snapT: function () { App.ui.snap = App.ui.snap === false; $('#snap').checked = App.ui.snap; },
   resetLayout: function () { Dock.reset(); },
-  'new': IO.newProject, projects: function () { IO.showStart(); }, open: IO.open, save: function () { IO.save(false); }, saveas: function () { IO.save(true); }, 'export': IO.exportTemplate,
+  'new': IO.newProject, projects: function () { IO.showStart(); }, open: IO.open, save: function () { IO.save(false); }, saveas: function () { IO.save(true); }, 'export': function () { IO.exportTemplate(); }, exportOnly: function () { IO.exportTemplate(true); },
   undo: App.undo, redo: App.redo, dup: App.duplicate, precomp: App.precompose, del: Main.del,
   'null': function () { App.addLayer('null'); },
   table: function () { App.addLayer('table'); }, chart: function () { App.addLayer('chart'); }, crawl: function () { App.addLayer('crawl'); },
@@ -441,5 +685,7 @@ Main.init = function () {
     else setTimeout(function () { sp.classList.add('out'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 500); }, Math.max(300, 1600 - performance.now()));
   }
   if (window.__noLottie || !window.lottie) UI.status('Lottie player not installed yet - everything else works. Run the installer once to enable Lottie layers.');
+  window.__booted = true;
+  if (N && N.booted) N.booted();
 };
 window.addEventListener('DOMContentLoaded', Main.init);

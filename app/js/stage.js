@@ -471,4 +471,12 @@ Stage.live = function (cmd, arg) {
   else if (cmd === 'next') pl.liveNext();
   else if (cmd === 'stop') pl.liveStop();
   else if (cmd === 'invoke') pl.invoke(arg);
+  else if (cmd === 'update') {
+    /* a field gets a new value: plays its update animation */
+    if (!pl.shown) { pl.show(true); }
+    var ch = {}; ch[arg.key] = { from: App.testData[arg.key], to: arg.value };
+    App.testData[arg.key] = arg.value;
+    pl.updated(ch); pl.startLoop();
+    if (window.Panels && Panels.build) Panels.build();
+  }
 };

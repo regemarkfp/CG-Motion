@@ -31,6 +31,8 @@ set /p CSC_KEY_PASSWORD=<"%~dp0build\RegemarkFP-password.txt"
 :build
 call npm run dist
 if errorlevel 1 goto failed
+node tools\check-build.js
+if errorlevel 1 goto failed
 if exist "docs\CG Motion Guide.pdf" copy /y "docs\CG Motion Guide.pdf" "dist\" >nul
 if exist "build\RegemarkFP.cer" (
   copy /y "build\RegemarkFP.cer" "dist\" >nul

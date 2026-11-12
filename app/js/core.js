@@ -121,6 +121,17 @@ App.comp = function (id) {
   for (i = 0; i < cs.length; i++) if (cs[i].id === id) return cs[i];
   return cs[0];
 };
+/* a field name made from a layer name: TIME 1 -> TIME_1 */
+App.keyFromName = function (n) { var k = String(n || '').trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_]/g, '_').replace(/_+/g, '_'); if (/^[0-9]/.test(k)) k = '_' + k; return k; };
+/* rename a layer; a field that still carries the layer's name (as imported or made) follows the new name */
+App.renameLayer = function (L, name) {
+  var old = L.name; L.name = name;
+  if (L.key && name && (L.key === old || L.key === App.keyFromName(old) || /^(field\d*|f\d+)$/i.test(L.key))) {
+    var k = App.keyFromName(name);
+    if (k && k !== L.key) { L.key = k; return k; }
+  }
+  return null;
+};
 App.layer = function (id) {
   var ls = App.comp().layers;
   for (var i = 0; i < ls.length; i++) if (ls[i].id === id) return ls[i];

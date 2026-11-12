@@ -413,6 +413,44 @@ In the **Colours** panel, make shared colours (for example team colours), link l
 
 **Repeater** in the toolbar turns the selected layers into rows or columns, each copy with its own numbered fields: a field called `name` becomes `name1`, `name2` and so on. Send plain `name` to set all copies at once, and type `{#}` in a text to show the copy's number. A **Copies shown** field lets CasparCG choose how many rows appear. Use it for line-ups and full pagers.
 
+### Text animation (letters, words, lines)
+
+A text layer can animate one letter, word or line after another, for example a title whose letters rise in one by one. Tick **Animate letters, words or lines** in the layer's **Text animation** section.
+
+&#91;image: The Text animation section, with the letters of a title rising in one after another\]
+
+- **Split:** letters, words or lines.
+- **In:** a preset, the frame it **Starts** on, **Frames** (how long each letter or word takes), **Stagger** (the gap in frames before the next one starts) and **Order**: first to last, last to first, from the centre, from the edges, or random.
+- **Out:** the same settings; it plays the preset in reverse to take the text away.
+- **Presets:** Rise, Drop, Fade, Slide in from the right or left, Scale up (pop), Zoom out, Blur in, Typewriter, Flip and Spin.
+- **Start at playhead** moves the start to the playhead. Next to it you see the frames the animation covers for the current text.
+
+It runs on the normal timeline, so scrubbing in the editor shows it, and stop markers hold it like any other animation. New text sent from CasparCG is split the same way.
+
+### Update animations
+
+A layer with a field can animate when that field gets a new value, for example a score that pops when it changes. Find **Update animation** in the Inspector of the layer. It plays automatically on every CasparCG `UPDATE` that changes the value; sending the same value again does nothing.
+
+- **Presets:** Fade out and in, Slide up, Slide down, Slide left, Slide right, Pop, Flip, Flash, and Count (numbers count from the old value to the new one). On a text layer, **Per letter / word** takes the old text away one letter, word or line after another (the preset in reverse) and brings the new text in the same way; you set the preset, frames, stagger and order, and the swap happens when the last old unit has gone. Set the duration in frames, and the distance for slides. The new value appears half way, when the old one is out of sight; with Pop and Flash it appears straight away.
+- **Custom keyframes:** choose **Custom keyframes (own timeline)...** and the layer's own update timeline opens in a window over the viewer. Each layer has its own.
+
+&#91;image: The update timeline of a layer, with keyframes and the blue update marker\]
+
+In the update timeline:
+
+- **Channels:** Position X and Y, Scale, Scale Y, Rotation, Opacity and Blur. They are offsets from the layer's normal look, so the animation works wherever the layer is on the main timeline.
+- **Keyframes:** click a track or the ruler to move the playhead (the viewer shows that frame), then type a value or click the diamond to add a key. Drag keys to move them, double-click a key to delete it, and click a key to set its easing to the next key (ease in and out, linear, ease in, ease out, or hold to jump).
+- **Update marker:** the blue marker is the frame where the new value appears. Drag it to where the old value is out of sight.
+- **Start from a preset** fills the keyframes from a preset to adjust. **Play** sends a new value in the viewer and plays the whole animation, as CasparCG will.
+
+To test from the Control panel, click **Play** under Test like CasparCG, then type a new value in a field and press Enter. **Test in the viewer** in the Inspector does the same with a made-up value.
+
+### The same fields in two pre-comps
+
+Two composition layers whose insides use the same field names, such as a left and a right shot clock that both have TIME1 and TIME2, would take the same value. The Control panel warns about this. **Give each its own fields** adds a **Field suffix** to each layer, taken from the end of its name: Shot clock_L gets _L and Shot clock_R gets _R, so the fields become TIME1_L, TIME1_R, TIME2_L and TIME2_R. You can also set the Field suffix yourself in the Inspector of a composition layer. Sending the plain name (TIME1) still fills every copy that has no value of its own.
+
+Renaming a layer renames its field too, as long as the field still has the name it got from the layer. A field name you typed yourself is kept.
+
 ### Testing in the Control panel
 
 The **Control** panel plays the template in the viewer exactly as CasparCG would: **Play**, **Next**, **Stop**, each invoke, and every field with a test value. **Copy JSON** copies the test values; **Back to editing** returns to the timeline.
@@ -422,6 +460,17 @@ The **Control** panel plays the template in the viewer exactly as CasparCG would
 ### CSV export
 
 **File > Export variables as CSV** saves one row per field and per invoke of the template (name, type, default value, description) for RFP Manager or a spreadsheet.
+
+### Variables sheet (PDF)
+
+**File > Export variables sheet (PDF, all templates)...**, or **Export PDF** in the Control panel, makes one PDF for the whole project. Hand it to the operator or the person building the control software.
+
+- **Cover:** the project name, date, CasparCG channel and layer, totals, and a list of the templates.
+- **Each template:** a still frame at its hold point (the first stop marker, or the middle of the timeline), rendered exactly as CasparCG shows it, with the default text.
+- **Fields and invokes:** a table of the template's fields (name, type, default, what it is), with cell fields listed separately, and a table of its invokes (what they play, which frames and the CasparCG command).
+- **Load command:** a ready-made CG ADD command that loads the template with its default data.
+
+A template here is a composition that isn't used inside another one; nested compositions are covered by the template that contains them. With an export folder set, the PDF is saved there; otherwise CG Motion asks where.
 
 ## Playback control
 
@@ -453,7 +502,7 @@ In the **Control** panel, **+ Add** creates an invoke: a name and a range of fra
 
 ### Independent compositions
 
-Tick **Runs independently** on a composition layer to give it its own playhead, controlled by invokes. Tick **Starts by itself when the template plays** for a nested animation that runs on its own, for example a looping background, while the main timeline holds.
+Tick **Runs independently** on a composition layer to give it its own playhead, controlled by invokes; choosing the layer in an invoke's Plays list ticks it for you. Tick **Starts by itself when the template plays** for a nested animation that runs on its own, for example a looping background, while the main timeline holds.
 
 ### Stop backwards
 
@@ -462,6 +511,10 @@ In the composition settings (click an empty spot in the viewer), **Stop plays th
 ## Exporting and going on air
 
 **Export template** (Ctrl+E) writes the composition you have open into the project folder as one HTML file named after the composition, with its fonts, pictures and sequences inside it.
+
+**Working inside a pre-comp?** Export template writes the template the open composition belongs to, so your change lands in the file CasparCG plays. If the pre-comp is used in several templates, all of them are written. The CasparCG panel works on that template too. To write the pre-comp as a template of its own, use **File > Export this composition on its own**.
+
+**Fonts travel with the template.** When you export, the desktop app embeds every font the template's text uses, from the fonts installed on this PC: the right files for each weight and italic. The CasparCG PC doesn't need them installed. Fonts under **Assets > Fonts** come first. The status bar lists the fonts that were embedded, any that aren't installed here, and any whose licence doesn't allow embedding.
 
 ### Exporting
 
@@ -512,6 +565,104 @@ Anything else is listed in the report shown after the import, so you can rebuild
 - Large projects take a few seconds to import. Click **Optimise sequences for playback** in the report: Loopic sequences are usually full-frame pictures and play much smoother optimised.
 - Compare each template with the original before using it on air.
 
+## Importing vMix titles
+
+**File > Import vMix titles (.gtzip)...** (or **Import vMix titles...** on the start screen) turns vMix GT titles into CG Motion compositions. Pick one title or a whole folder of them at once: every title becomes its own composition in one project, ready to export as a CasparCG template. The .gtzip files are never changed.
+
+&#91;image: vMix's own preview next to the same titles imported and exported for CasparCG\]
+
+### What comes across
+
+- **Layout:** every rectangle, picture, text and image object, in its place and size. Pictures inside the title travel with it; solid and bitmap rectangles, opacity, crops, skew and drop shadows are kept.
+- **Text:** font, size, weight, alignment, line spacing and Uppercase. **Shrink** keeps the text on its line and makes it smaller until it fits the box, as in vMix.
+- **Animations:** the In storyboard plays from the start, a stop marker holds the title, and `CG NEXT` / `CG STOP` play the Out storyboard. Fly, Fade, Zoom, Expand and Reveal become keyframes with vMix's easing, and objects that fly in are hidden outside their vMix layer, exactly like in vMix.
+- **Masks:** objects masked by another object stay masked.
+- **Fields:** each text keeps its vMix name as a CasparCG field (spaces become `_`, so `PLAYER NAME` is `PLAYER_NAME`). Image objects become replaceable pictures, and rectangles marked as data, like a team colour, become colour fields.
+
+### How vMix animations are converted
+
+| In vMix | In CG Motion |
+| --- | --- |
+| Storyboard (In) | Keyframes from frame 0, ending at the stop marker |
+| TransitionOut | Keyframes after the stop marker, played by `CG STOP` |
+| Fly (Left, Right, Top, Bottom) | Position keyframes from (or to) just outside the object's vMix layer, which hides it there |
+| Fade | Opacity keyframes |
+| Zoom | Scale keyframes around the centre |
+| Expand (from an edge, a corner or the centre) | Scale keyframes from that edge, corner or centre |
+| Reveal | Crop mask keyframes that open from the centre |
+| An animation on a whole vMix layer | A null layer that its objects follow (fades go to each object) |
+
+### Check before going on air
+
+- **Fonts:** a .gtzip does not contain fonts. Install them on this PC (export embeds them in the templates), or add the font files under **Assets > Fonts**. The import report lists the fonts each title uses.
+- Pictures vMix did not pack into the .gtzip are listed in the report; add them under Assets and pick them on the layer.
+- A rectangle that follows the size of another object in vMix keeps its designed size here.
+- Titles import at 50 frames per second. Compare each composition with vMix's preview (shown in the report; click a preview to open that composition) before using it on air.
+
+## Importing Photoshop files
+
+**File > Import Photoshop file (.psd)...** turns a layered .psd or .psb into a CG Motion composition at the document's size. Every layer lands in its place, ready to animate and export as a CasparCG template. The .psd file is never changed.
+
+&#91;image: A Photoshop lower third imported: groups, text fields and the clipping mask in place\]
+
+### What comes across
+
+- **Layers:** every pixel layer becomes a picture in the same place, with its opacity, blend mode and visibility. Hidden layers stay hidden.
+- **Groups:** each group becomes a null layer that its layers follow, so you can animate the whole group at once. The group's opacity is applied to its layers.
+- **Text:** text layers become editable text with the same font, weight, size, colour and alignment. Each one is a CasparCG field named after the layer (spaces become `_`, so `PLAYER NAME` is `PLAYER_NAME`).
+- **Masks:** layer masks are baked into the picture. A clipping mask becomes a matte, so the clipped layer only shows inside the layer under it.
+- **Layer styles:** drop shadows come across. Other styles (strokes, glows, bevels) are listed in the import report; rasterise them in Photoshop if you need them.
+- **Colour:** RGB, CMYK, greyscale and indexed files, in 8, 16 or 32 bits, are converted to RGB. A flattened file comes in as one picture.
+
+### Other programs
+
+| Program | How to bring it in |
+| --- | --- |
+| Affinity Photo / Designer | Opens directly, no export needed: see Importing Affinity files below |
+| After Effects | Animations: export a Lottie file with Bodymovin (Assets > Lottie) or render a PNG sequence with alpha (Assets > Sequence). A still layout: Composition > Save Frame As > Photoshop Layers..., then import the .psd |
+| DaVinci Resolve / Fusion | Render the title as a PNG sequence with alpha and add it under Assets > Sequence |
+
+Opening an After Effects or Fusion file in CG Motion shows these steps.
+
+### Check before going on air
+
+- **Fonts:** a .psd does not contain fonts. Install them on this PC (export embeds them in the templates), or add the font files under **Assets > Fonts**. The import report lists the fonts used.
+- Text boxes are made a little wider than the text. Check each text's size and position against Photoshop.
+- Smart objects come in as their picture. Adjustment layers are left out; use **Effects** on the layers instead. The report names every layer it changed or left out.
+
+## Importing Affinity files
+
+**File > Import Affinity file (.af, .afphoto, .afdesign)...** opens Affinity Photo, Designer and Publisher files (versions 1, 2 and 3, including Affinity by Canva's .af) directly, with no export step. Opening an Affinity file with **Open...** does the same. The Affinity file is never changed.
+
+&#91;image: Affinity file imported: each artboard a composition, Affinity's own preview in the report\]
+
+### What comes across
+
+- **Artboards:** each artboard becomes its own composition at the artboard's size, so a file of several graphics becomes several templates. A page without artboards becomes one composition.
+- **Layers and groups:** each becomes a null layer that its layers follow, keeping opacity, blend mode and visibility. Empty groups are left out.
+- **Text:** artistic and frame text become editable text with the same font, weight, size, colour, alignment, rotation and line breaks. Each one is a CasparCG field named after the layer, or after its text when the layer has no name.
+- **Shapes:** plain rectangles (with round corners) and ellipses with a solid fill and centred stroke become CG Motion shapes, so their colour stays editable. Other shapes, curves, gradients and dashed strokes are drawn into pictures at the document's resolution.
+- **Pictures:** pixel layers and placed images become pictures; a placed PNG or JPEG keeps its original file.
+- **Clipping and masks:** a shape that clips text becomes a matte for it. Other clipped artwork, vector masks and pixel masks are drawn into the picture with the mask applied.
+- **Effects:** drop shadow and Gaussian blur map onto the layer's shadow and blur. Colour overlay and outline are drawn into the picture. Other effects are listed in the report.
+- **Big illustrations:** groups of plain vector artwork (more than 12 shapes and no text) become one picture each, so a template doesn't carry hundreds of layers. In a document with more than 150 parts, every group without text becomes one picture.
+
+### Check before going on air
+
+- **Fonts:** an Affinity file does not contain fonts. Install them on this PC (export embeds them in the templates), or add the font files under **Assets > Fonts**. The import report lists the fonts used.
+- The report shows Affinity's own preview of the file; compare each composition with it.
+- Adjustment layers, live filters, glows, bevels and Affinity-only blend modes (Add, Linear Light and others) are left out or replaced with the nearest mode; the report names each one.
+- If a file can't be read at all, the small preview Affinity stores inside it is imported instead, and the report says so. Export a PSD from Affinity for full quality.
+
+## If CG Motion opens to an empty window
+
+If the editor hasn't finished starting after 12 seconds, CG Motion asks what to do. On most PCs, **Restart without graphics acceleration** fixes it; CG Motion remembers that choice. If the graphics driver crashes, CG Motion restarts without acceleration on its own.
+
+- **Start CG Motion (safe mode).bat**, next to Start CG Motion.bat, starts without graphics acceleration and with the default panel layout.
+- Any error while starting shows in a red box at the bottom of the window. Send a screenshot of it.
+- A log is kept in `%APPDATA%\cg-motion\cg-motion.log`.
+- To turn graphics acceleration back on, delete the file `no-gpu` in that same folder.
+
 ## Keyboard and mouse shortcuts
 
 **Help > Keyboard shortcuts** shows the most used ones inside the app.
@@ -547,8 +698,8 @@ Anything else is listed in the report shown after the import, so you can rebuild
 
 ## Release notes
 
-A new row is added here, newest first, with every release.
+A new row is added here, newest first, with every release, listing what's new and what was fixed.
 
-| Version | Released | What's new |
-| --- | --- | --- |
-| 1.0 | 9 October 2026 | First full release: Windows installer and portable app signed as RegemarkFP, RFP splash and colours, multiline text with shrink to fit, text styles with presets, tables, charts (including double bars for stat comparisons), crawls, Loopic import, sequence optimising, motion blur, the Fit and sideways scrolling viewer controls, a tutorial project, the Data panel, textures (with halftone, gradient, radial glow, rays and rings, motion, sizing and refine controls, presets, layer masks and full CasparCG control), shadows that fall outside masks, children that do not take a parent's skew, the Hand tool and trackpad scrolling, this guide as a PDF next to the program, and CasparCG control of every table cell, chart value and crawl item |
+| Version | Released | What's new | Fixes |
+| --- | --- | --- | --- |
+| 1.0 | 9 October 2026 | First full release: Windows installer and portable app signed as RegemarkFP, RFP splash and colours, multiline text with shrink to fit, text styles with presets, tables, charts (including double bars for stat comparisons), crawls, Loopic import, vMix title import, Photoshop (.psd) import, Affinity file import (.af, .afdesign, .afphoto, .afpub), sequence optimising, motion blur, the Fit and sideways scrolling viewer controls, a tutorial project, the Data panel, textures (with halftone, gradient, radial glow, rays and rings, motion, sizing and refine controls, presets, layer masks and full CasparCG control), shadows that fall outside masks, children that do not take a parent's skew, the Hand tool and trackpad scrolling, this guide as a PDF next to the program, CasparCG control of every table cell, chart value and crawl item, a PDF variables sheet of every template with a still frame, its fields and its invokes, installed fonts embedded into exported templates automatically, and update animations (presets, or custom keyframes on each layer's own update timeline with an update marker) that play when a field changes, and text animation by letter, word or line, in and out on the timeline and per letter or word on updates | An empty grey window at startup on some PCs: CG Motion now recovers on its own, offers a restart without graphics acceleration, shows startup errors on screen, keeps a log, and has a safe-mode start file. Builds are now checked for missing editor files before an installer is made, and an incomplete installation says so instead of opening empty. An invoke's Plays list now offers every composition layer, not only those already set to run independently; choosing one sets it. Changes made inside a pre-comp didn't reach the template: Export template (and the CasparCG panel) now write the template(s) that use the open pre-comp. Pre-comps that share field names (left and right clocks) got the same values: composition layers now have a Field suffix, with a warning and one-click fix in the Control panel; a field also follows its layer when the layer is renamed. |

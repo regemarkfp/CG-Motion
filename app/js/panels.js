@@ -228,11 +228,12 @@ Panels.suffixes = function () {
     map[c.id] = (map[c.id] || []).concat(list.filter(function (x) { return (map[c.id] || []).indexOf(x) < 0; }));
     c.layers.forEach(function (L) {
       if (L.type !== 'comp' || !App.project.comps.some(function (k) { return k.id === L.comp; })) return;
-      var next = list;
+      var next = L.keySuffix ? list.map(function (ps) { return { s: ps.s + L.keySuffix, n: ps.n }; }) : list;
       if (L.rep && L.rep.on) {
         var n = Math.max(1, Math.min(100, Math.round(+L.rep.n || 1))), first = L.rep.first == null ? 1 : Math.round(+L.rep.first || 0);
         next = [];
-        list.forEach(function (ps) { for (var k = 0; k < n; k++) next.push({ s: ps.s + (ps.s ? '_' : '') + (first + k), n: first + k }); });
+        var base = next; next = [];
+        base.forEach(function (ps) { for (var k = 0; k < n; k++) next.push({ s: ps.s + (ps.s ? '_' : '') + (first + k), n: first + k }); });
       }
       walk(L.comp, next, d + 1);
     });
@@ -278,6 +279,45 @@ Panels.fieldList = function () {
   });
   return out.sort(function (a, b) { return natCmp(a.key, b.key); });
 };
+/* composition layers in the open template whose fields share names (and so would take the same value) */
+Panels.keyClashes = function () {
+  var groups = [], layers = [];
+  function keysOf(compId, d, seen) {
+    var out = {}; if (d > 8 || seen[compId]) return out; seen[compId] = 1;
+    App.comp(compId).layers.forEach(function (L) {
+      if (L.key) out[L.key] = 1;
+      if (L.type === 'comp' && !L.keySuffix && !(L.rep && L.rep.on)) { var k = keysOf(L.comp, d + 1, seen); for (var x in k) out[x] = 1; }
+    });
+    return out;
+  }
+  (function walk(compId, d, path) {
+    if (d > 8) return;
+    App.comp(compId).layers.forEach(function (L) {
+      if (L.type !== 'comp' || !App.project.comps.some(function (c) { return c.id === L.comp; })) return;
+      if (!L.keySuffix && !(L.rep && L.rep.on)) layers.push({ L: L, keys: keysOf(L.comp, 0, {}) });
+      walk(L.comp, d + 1);
+    });
+  })(App.compId, 0);
+  var used = {};
+  layers.forEach(function (a, i) {
+    if (used[i]) return;
+    var g = [a], shared = null;
+    layers.forEach(function (b, j) {
+      if (j <= i || used[j]) return;
+      var common = Object.keys(a.keys).filter(function (k) { return b.keys[k]; });
+      if (common.length) { g.push(b); used[j] = 1; shared = (shared || common).filter(function (k) { return common.indexOf(k) >= 0; }); if (!shared.length) shared = common; }
+    });
+    if (g.length > 1) {
+      used[i] = 1;
+      var names = g.map(function (x) { return x.L.name || ''; }), pre = names[0];
+      names.forEach(function (n) { while (pre && n.indexOf(pre) !== 0) pre = pre.slice(0, -1); });
+      var rest = names.map(function (n) { return n.slice(pre.length).replace(/[^A-Za-z0-9]/g, ''); });
+      var ok = rest.every(function (r) { return r; }) && rest.filter(function (r, k) { return rest.indexOf(r) === k; }).length === rest.length;
+      groups.push({ layers: g.map(function (x) { return x.L; }), keys: (shared || []).sort(natCmp), suffixes: g.map(function (x, k) { return '_' + (ok ? rest[k] : (k + 1)); }) });
+    }
+  });
+  return groups;
+};
 Panels.sampleData = function () {
   var o = {};
   Panels.fieldList().forEach(function (f) { o[f.key] = App.testData[f.key] != null ? App.testData[f.key] : f.def; });
@@ -295,12 +335,30 @@ Panels.control = function (el) {
   el.appendChild(h('p', { class: 'hint', text: 'Stop markers on the timeline (M key) are where play() and next() pause.' }));
 
   el.appendChild(h('div', { class: 'ghead', text: 'Editable fields' }));
+  Panels.keyClashes().forEach(function (g) {
+    el.appendChild(h('div', { class: 'card warn-card' }, [
+      h('p', { class: 'hint warn', text: g.layers.map(function (L) { return '"' + L.name + '"'; }).join(' and ') + ' use the same field' + (g.keys.length === 1 ? '' : 's') + ' (' + g.keys.slice(0, 6).join(', ') + (g.keys.length > 6 ? '...' : '') + '), so one value fills ' + (g.layers.length === 2 ? 'both' : 'all of them') + '.' }),
+      h('div', { class: 'pbar' }, [pbtn('Give each its own fields', function () {
+        g.layers.forEach(function (L, i) { L.keySuffix = g.suffixes[i]; });
+        App.commit();
+        UI.status('Field suffixes added: ' + g.layers.map(function (L, i) { return L.name + ' ' + g.suffixes[i]; }).join(', ') + '. For example ' + g.keys[0] + ' is now ' + g.keys[0] + g.suffixes[0] + ' and ' + g.keys[0] + g.suffixes[1] + '.');
+      }, 'Adds a suffix to each composition layer (from the end of its name) so its fields get their own names', 'primary')])
+    ]));
+  });
   if (!fields.length) el.appendChild(h('p', { class: 'hint', text: 'No editable fields yet. Select a text layer and tick "Editable from CasparCG".' }));
   fields.forEach(function (f) {
     var inp = h('input', { type: 'text', placeholder: f.def || f.kind, value: App.testData[f.key] != null ? App.testData[f.key] : '' });
+    /* while testing like CasparCG, a value is sent when you press Enter or leave the box, like an UPDATE (update animations play) */
     inp.addEventListener('input', function () {
+      if (App.liveMode) return;
       if (inp.value === '') delete App.testData[f.key]; else App.testData[f.key] = inp.value;
       Stage.render();
+    });
+    inp.addEventListener('change', function () {
+      if (!App.liveMode || !Stage.player || !Stage.player.updated) return;
+      var was = App.testData[f.key] != null ? App.testData[f.key] : f.def, now = inp.value === '' ? f.def : inp.value;
+      if (inp.value === '') delete App.testData[f.key]; else App.testData[f.key] = inp.value;
+      var chg = {}; chg[f.key] = { from: was, to: now }; Stage.player.updated(chg); Stage.player.startLoop();
     });
     var extra = null;
     function put(v) { inp.value = v; if (v === '') delete App.testData[f.key]; else App.testData[f.key] = v; Stage.render(); }
@@ -324,7 +382,8 @@ Panels.control = function (el) {
     el.appendChild(h('div', { class: 'pbar' }, [
       pbtn('Clear test values', function () { App.testData = {}; Stage.render(); Panels.build(); }),
       pbtn('Copy JSON', function () { UI.copy(JSON.stringify(Panels.sampleData())); UI.status('Field data copied as JSON.'); }),
-      pbtn('Export CSV', function () { IO.exportCSV(); }, 'Save the list of variables of this template as a CSV file (for RFP Manager or a spreadsheet)')
+      pbtn('Export CSV', function () { IO.exportCSV(); }, 'Save the list of variables of this template as a CSV file (for RFP Manager or a spreadsheet)'),
+      pbtn('Export PDF', function () { IO.exportVariablesPDF(); }, 'A PDF sheet of every template in this project: a still frame, its fields and its invokes')
     ]));
   }
 
@@ -333,9 +392,11 @@ Panels.control = function (el) {
     p.actions.push({ id: uid('x'), name: 'action' + n, target: 'main', comp: App.compId, from: Math.round(App.time), to: Math.min(App.comp().duration, Math.round(App.time) + 25) });
     App.commit();
   })]));
-  el.appendChild(h('p', { class: 'hint', text: 'An invoke is a named function in the exported template. Calling it (CG INVOKE) plays a range of frames, on the main timeline or on a composition layer that runs independently.' }));
+  el.appendChild(h('p', { class: 'hint', text: 'An invoke is a named function in the exported template. Calling it (CG INVOKE) plays a range of frames, on the main timeline or on any composition layer (choosing a layer makes it run independently).' }));
   var targets = [['main', 'Main timeline']];
-  App.allLayers(function (L) { if (L.type === 'comp' && L.triggered) targets.push([L.id, 'Layer: ' + L.name]); });
+  /* every composition layer can be driven by an invoke; choosing one that isn't independent yet makes it independent */
+  var compLayers = {};
+  App.allLayers(function (L) { if (L.type === 'comp' && !compLayers[L.id]) { compLayers[L.id] = L; targets.push([L.id, 'Layer: ' + L.name + (L.triggered ? '' : ' (will run independently)')]); } });
   /* only the invokes that belong to the template that is open (its own, and those of independent compositions inside it) */
   var inTpl = {};
   IO.exportProject(App.compId).actions.forEach(function (a) { inTpl[a.id] = 1; });
@@ -354,7 +415,12 @@ Panels.control = function (el) {
     var sel = h('select');
     targets.forEach(function (t) { sel.appendChild(h('option', { value: t[0], text: t[1] })); });
     sel.value = a.target || 'main';
-    sel.addEventListener('change', function () { a.target = sel.value; if (a.target === 'main') a.comp = App.compId; else delete a.comp; sel.blur(); App.commit(); });
+    sel.addEventListener('change', function () {
+      a.target = sel.value;
+      if (a.target === 'main') a.comp = App.compId;
+      else { delete a.comp; var TL = compLayers[a.target]; if (TL && !TL.triggered) { TL.triggered = true; UI.status('"' + TL.name + '" now runs independently, controlled by its invokes.'); } }
+      sel.blur(); App.commit();
+    });
     var reserved = /^(play|stop|next|update|invoke|gotoFrame|setText)$/.test(a.name);
     el.appendChild(h('div', { class: 'card' }, [
       fld('Name', 'name', 'text'),
@@ -377,7 +443,7 @@ Panels.control = function (el) {
       h('code', { class: 'amcp', text: 'CG ' + p.caspar.channel + '-' + p.caspar.layer + ' INVOKE 1 "' + a.name + '"' })
     ]));
   });
-  if (targets.length === 1) el.appendChild(h('p', { class: 'hint', text: 'Tip: to animate one element without touching the rest (a wicket flash, a stat pop-up), put it in its own composition, add that as a layer, and tick "Runs independently" on the layer. It then appears here as a target.' }));
+  if (targets.length === 1) el.appendChild(h('p', { class: 'hint', text: 'Tip: to animate one element without touching the rest (a wicket flash, a stat pop-up), put it in its own composition and add that as a layer. It then appears here as a target.' }));
 };
 
 /* ================= Colours ================= */
@@ -558,22 +624,24 @@ Panels.caspar = function (el) {
   el.appendChild(h('div', { class: 'full' }, [h('div', { class: 'f' }, [h('label', { text: 'Export folder' }), pf]), fld('Sub-folder', 'prefix', 'text')]));
   el.appendChild(h('div', { class: 'pbar' }, [pbtn('Browse...', function () { Api.pickFolder().then(function (f) { if (f) { App.project.exportFolder = f; App.commit(); } }); })]));
   el.appendChild(h('p', { class: 'hint', text: 'This is the export folder of the project. It should be the CasparCG template folder (template-path in casparcg.config) or a folder inside it; in that case put that folder name in Sub-folder so the server finds the template.' }));
-  var name = ((cp.prefix || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') ? (cp.prefix || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') + '/' : '') + IO.safeName();
-  el.appendChild(h('div', { class: 'ghead', text: 'On air: ' + name }));
+  var tplId = IO.templatesFor(App.compId)[0], tplName = IO.asComp(tplId, function () { return IO.safeName(); });
+  function tplData() { return IO.asComp(tplId, function () { return Panels.sampleData(); }); }
+  var name = ((cp.prefix || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') ? (cp.prefix || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') + '/' : '') + tplName;
+  el.appendChild(h('div', { class: 'ghead', text: 'On air: ' + name + (tplId !== App.compId ? '  (the template that uses "' + App.comp().name + '")' : '') }));
   el.appendChild(h('div', { class: 'pbar' }, [
     pbtn('Export + load', function () {
       if (!App.project.exportFolder) { UI.status('Choose the export folder first.'); return; }
       IO.exportTo(App.project.exportFolder).then(function () {
-        return Panels.send(['CG ' + addr + ' ADD 1 "' + name + '" 0 "' + Panels.amcpEscape(JSON.stringify(Panels.sampleData())) + '"']);
+        return Panels.send(['CG ' + addr + ' ADD 1 "' + name + '" 0 "' + Panels.amcpEscape(JSON.stringify(tplData())) + '"']);
       }).catch(function (e) { UI.status('Export failed: ' + (e && e.message || e)); });
     }, 'Writes the template into the folder and loads it on the channel (not yet playing)', 'primary'),
     pbtn('Play', function () { Panels.send(['CG ' + addr + ' PLAY 1']); }),
     pbtn('Next', function () { Panels.send(['CG ' + addr + ' NEXT 1']); }),
     pbtn('Stop', function () { Panels.send(['CG ' + addr + ' STOP 1']); }),
-    pbtn('Update', function () { Panels.send(['CG ' + addr + ' UPDATE 1 "' + Panels.amcpEscape(JSON.stringify(Panels.sampleData())) + '"']); }, 'Sends the values from the Control tab'),
+    pbtn('Update', function () { Panels.send(['CG ' + addr + ' UPDATE 1 "' + Panels.amcpEscape(JSON.stringify(tplData())) + '"']); }, 'Sends the values from the Control tab'),
     pbtn('Clear', function () { Panels.send(['CG ' + addr + ' CLEAR']); })
   ]));
-  var tplActs = IO.exportProject(App.compId).actions.filter(function (a, i, arr) { return arr.findIndex(function (b) { return b.name === a.name; }) === i; });
+  var tplActs = IO.exportProject(tplId).actions.filter(function (a, i, arr) { return arr.findIndex(function (b) { return b.name === a.name; }) === i; });
   if (tplActs.length) {
     el.appendChild(h('div', { class: 'pbar' }, tplActs.map(function (a) {
       return pbtn(a.name, function () { Panels.send(['CG ' + addr + ' INVOKE 1 "' + a.name + '"']); }, 'CG INVOKE');

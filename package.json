@@ -21,7 +21,7 @@
   "build": {
     "appId": "com.cgmotion.editor",
     "productName": "CG Motion",
-    "copyright": "Copyright © 2026 RegemarkFP",
+    "copyright": "Copyright \u00a9 2026 RegemarkFP",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -29,8 +29,10 @@
     "files": [
       "main.js",
       "preload.js",
+      "fontindex.js",
       "package.json",
-      "app/**/*"
+      "app/**/*",
+      "NOTICE.md"
     ],
     "win": {
       "icon": "build/icon.ico",
