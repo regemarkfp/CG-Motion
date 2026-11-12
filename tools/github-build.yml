@@ -55,7 +55,10 @@ jobs:
           CSC_LINK: ${{ matrix.os == 'windows-latest' && secrets.REGEMARKFP_PFX || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.os == 'windows-latest' && secrets.REGEMARKFP_PASSWORD || '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npx electron-builder ${{ matrix.target }} --publish never
+        # an empty CSC_LINK is read as a file path (the project folder), so build unsigned when there is no certificate
+        run: |
+          [ -n "$CSC_LINK" ] || unset CSC_LINK CSC_KEY_PASSWORD
+          npx electron-builder ${{ matrix.target }} --publish never
       - name: Check the Windows build has all the editor files
         if: runner.os == 'Windows'
         run: node tools/check-build.js
