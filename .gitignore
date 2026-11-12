@@ -1,0 +1,15 @@
+# built programs and downloaded tools (rebuilt with "Build CG Motion.bat")
+node_modules/
+dist/
+
+# signing certificate: keep private, never upload
+*.pfx
+*password*
+*.cer
+
+# test exports and big one-off files in the project folder
+/*.html
+test/
+*.log
+.DS_Store
+Thumbs.db

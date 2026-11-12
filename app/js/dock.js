@@ -400,8 +400,8 @@ Dock.moveRoot = function (name, side) {
 var Menu = { open: null };
 Menu.defs = function () {
   return [
-    ['File', [['Projects...', 'projects'], ['New project...', 'new', 'Ctrl+N'], ['Open...', 'open', 'Ctrl+O'], ['Import Loopic project (.loo)...', 'open'], '-', ['Save', 'save', 'Ctrl+S'], ['Save as...', 'saveas', 'Ctrl+Shift+S'], '-',
-      ['Export template', 'export', 'Ctrl+E'], ['Export variables as CSV', 'csv'], '-', ['Optimise sequences for playback', 'optimise']]],
+    ['File', [['Projects...', 'projects'], ['New project...', 'new', 'Ctrl+N'], ['Open...', 'open', 'Ctrl+O'], ['Import Loopic project (.loo)...', 'open'], ['Import vMix titles (.gtzip)...', 'importGt'], ['Import Photoshop file (.psd)...', 'importPsd'], ['Import Affinity file (.af, .afphoto, .afdesign)...', 'importAffinity'], '-', ['Save', 'save', 'Ctrl+S'], ['Save as...', 'saveas', 'Ctrl+Shift+S'], '-',
+      ['Export template', 'export', 'Ctrl+E'], ['Export this composition on its own', 'exportOnly'], ['Export variables as CSV', 'csv'], ['Export variables sheet (PDF, all templates)...', 'varsPdf'], '-', ['Optimise sequences for playback', 'optimise']]],
     ['Edit', [['Undo', 'undo', 'Ctrl+Z'], ['Redo', 'redo', 'Ctrl+Shift+Z'], '-', ['Copy', 'copy', 'Ctrl+C'], ['Paste', 'paste', 'Ctrl+V'], ['Duplicate', 'dup', 'Ctrl+D'], ['Delete', 'del', 'Del'], '-', ['Select all layers', 'selall', 'Ctrl+A']]],
     ['Layer', [['New text', 'toolText', 'T'], ['New rectangle', 'toolRect', 'R'], ['New ellipse', 'toolEllipse', 'O'], ['New image slot', 'slot'], ['New null', 'null'], ['New table', 'table'], ['New chart', 'chart'], ['New crawl', 'crawl'], '-',
       ['Make repeater', 'repeat'], ['Pre-compose', 'precomp', 'Ctrl+Shift+C'], '-', ['Bring forward', 'up', 'Ctrl+]'], ['Send backward', 'down', 'Ctrl+['], '-',

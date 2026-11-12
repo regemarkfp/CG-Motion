@@ -199,6 +199,8 @@ Inspector.applyTexPreset = function (each, name, ps) {
   });
   (App.project.texPresets = App.project.texPresets || {})[name] = ps;
 };
+Inspector.UNIT_PRESETS = [['rise', 'Rise'], ['drop', 'Drop'], ['fade', 'Fade'], ['slide', 'Slide in from the right'], ['slideRight', 'Slide in from the left'], ['scaleUp', 'Scale up (pop)'], ['zoomOut', 'Zoom out'], ['blur', 'Blur in'], ['typewriter', 'Typewriter'], ['flip', 'Flip'], ['spin', 'Spin']];
+Inspector.UNIT_ORDERS = [['forward', 'First to last'], ['backward', 'Last to first'], ['center', 'From the centre'], ['edges', 'From the edges'], ['random', 'Random']];
 Inspector.nextKey = function () {
   var used = {}, i = 0;
   App.allLayers(function (L) { if (L.key) used[L.key] = 1; (L.bindings || []).forEach(function (b) { if (b.key) used[b.key] = 1; }); for (var q in (L.bind || {})) if (L.bind[q].key) used[L.bind[q].key] = 1; });
@@ -371,7 +373,7 @@ Inspector.build = function () {
   /* ----- layer ----- */
   var others = c.layers.filter(function (o) { return layers.indexOf(o) < 0; }).map(function (o) { return [o.id, o.name]; });
   section(layers.length > 1 ? layers.length + ' layers' : TYPE_NAMES[L.type] + ' layer', [
-    full([la('name', 'Name', 'text')]),
+    full([attr('Name', 'text', function () { return L.name || ''; }, function (v) { var k = null; each(function (x) { var r = App.renameLayer(x, v); if (r) k = r; }); if (k) UI.status('Field renamed to ' + k + ' with the layer.'); })]),
     grid([la('start', 'In', 'number'), la('end', 'Out', 'number')]),
     full([attr('Parent', 'select', function () { return L.parent || ''; }, function (v) { each(function (x) { if (x.id !== v) Inspector.setParent(x, v); }); }, { options: [['', 'None']].concat(others) })]),
     L.parent ? Inspector.pinRow(layers) : null,
@@ -611,6 +613,8 @@ Inspector.build = function () {
   if (L.type === 'comp') {
     section('Composition layer', [
       full([btn('Open composition', function () { App.openComp(L.comp); })]),
+      full([attr('Field suffix', 'text', function () { return L.keySuffix || ''; }, function (v) { v = String(v || '').replace(/[^A-Za-z0-9_]/g, ''); each(function (x) { if (x.type === 'comp') x.keySuffix = v; }); }, { placeholder: 'e.g. _L' })]),
+      h('p', { class: 'hint', text: L.keySuffix ? 'Fields inside this layer are named with "' + L.keySuffix + '" added (TIME1 becomes TIME1' + L.keySuffix + '), so this copy has its own fields. The plain name still fills every copy.' : 'Give this layer a suffix (e.g. _L) when the same fields appear in another composition layer, so each gets its own fields: TIME1_L, TIME1_R.' }),
       full([attr('Show outside its frame (shadows, overshoot)', 'check', function () { return !!L.noClip; }, function (v) { each(function (x) { x.noClip = v; }); })]),
       full([la('triggered', 'Runs independently (controlled by invokes)', 'check')]),
       L.triggered ? full([la('autoPlay', 'Starts by itself when the template plays', 'check')]) : null,
@@ -825,6 +829,70 @@ Inspector.build = function () {
     L.shadow ? full([color('shColor', 'Colour')]) : null,
     L.shadow ? grid([num('shX', 'X'), num('shY', 'Y'), num('shBlur', 'Blur', { min: 0 })]) : null
   ]);
+
+  /* ----- text animation: letters, words or lines animate in and out one after another ----- */
+  if (L.type === 'text') {
+    var TA = L.ta || {};
+    function tav(g, k, label, type, o) {
+      return attr(label, type, function () { var x = (L.ta || {})[g] || {}; var v = k ? x[k] : (L.ta || {})[g]; return v == null ? (o && o.def != null ? o.def : '') : v; }, function (v) {
+        each(function (x) { if (x.type !== 'text' || !x.ta) return; if (k) { x.ta[g] = x.ta[g] || {}; x.ta[g][k] = v; } else x.ta[g] = v; });
+        if (k === 'preset' || !k) setTimeout(function () { Inspector.build(); }, 0);
+      }, o);
+    }
+    var on = attr('Animate letters, words or lines', 'check', function () { return !!(L.ta && L.ta.on); }, function (v) {
+      each(function (x) { if (x.type !== 'text') return; x.ta = x.ta || { by: 'letter', in: { preset: 'rise', at: Math.round(App.time), dur: 10, stagger: 2, order: 'forward' }, out: { preset: 'none', at: Math.max(0, x.end - 30), dur: 8, stagger: 1, order: 'forward' } }; x.ta.on = v; });
+      setTimeout(function () { Inspector.build(); }, 0);
+    });
+    var kidsT = [full([on])];
+    if (TA.on) {
+      var nU = (function () { var tx = String(L.text || ''), by = TA.by || 'letter', parts = by === 'word' ? tx.split(/\s+/) : (by === 'line' ? tx.split('\n') : Array.from(tx.replace(/\s/g, ''))); return parts.filter(Boolean).length; })();
+      kidsT.push(full([tav('by', '', 'Split by', 'select', { def: 'letter', options: [['letter', 'Letters'], ['word', 'Words'], ['line', 'Lines']] })]));
+      ['in', 'out'].forEach(function (g) {
+        var G = TA[g] || {}, isIn = g === 'in';
+        kidsT.push(h('div', { class: 'sub', text: isIn ? 'In' : 'Out (the animation in reverse)' }));
+        kidsT.push(grid([tav(g, 'preset', 'Preset', 'select', { def: isIn ? 'rise' : 'none', options: [['none', 'None']].concat(Inspector.UNIT_PRESETS) }), tav(g, 'at', 'Start', 'number', { def: 0 }),
+          tav(g, 'dur', 'Frames', 'number', { def: 10 }), tav(g, 'stagger', 'Stagger', 'number', { def: 2 }), tav(g, 'order', 'Order', 'select', { def: 'forward', options: Inspector.UNIT_ORDERS })]));
+        if (isIn) kidsT.push(h('p', { class: 'hint', text: 'Start is a frame on the timeline; Frames is how long each ' + (TA.by === 'word' ? 'word' : (TA.by === 'line' ? 'line' : 'letter')) + ' takes; Stagger is the gap in frames before the next one starts.' }));
+        if (G.preset && G.preset !== 'none') {
+          var total = Math.round((+G.dur || 10) + Math.max(0, nU - 1) * (+G.stagger || 0));
+          kidsT.push(h('div', { class: 'pbar' }, [btn('Start at playhead', function () { each(function (x) { if (x.ta && x.ta[g]) x.ta[g].at = Math.round(App.time); }); App.commit(); Inspector.build(); }, 'Moves the start of this animation to the playhead'),
+            h('span', { class: 'hint', text: 'frames ' + (+G.at || 0) + '-' + ((+G.at || 0) + total) + ' for ' + nU + ' ' + (TA.by === 'word' ? 'words' : (TA.by === 'line' ? 'lines' : 'letters')) })]));
+        }
+      });
+    }
+    section('Text animation', kidsT);
+  }
+
+  /* ----- update animation: plays when this layer's field gets a new value ----- */
+  if (L.key && /^(text|image|shape|table|chart|crawl)$/.test(L.type)) {
+    var U = L.upd || {}, pre = U.preset || 'none';
+    function ua(label, k, type, o) {
+      return attr(label, type, function () { var v = (L.upd || {})[k]; return v == null ? (o && o.def != null ? o.def : '') : v; }, function (v) {
+        each(function (x) { if (!x.key) return; x.upd = x.upd || { preset: 'none', dur: 15 }; x.upd[k] = v; });
+        if (k === 'preset') setTimeout(function () { Inspector.build(); if (v === 'custom') UpdAnim.open(L.id); }, 0);
+      }, o);
+    }
+    var acts = (App.project.actions || []).map(function (a) { return a.name; }).filter(function (n, i, arr) { return arr.indexOf(n) === i; });
+    var kidsU = [
+      full([ua('When ' + L.key + ' changes', 'preset', 'select', { def: 'none', options: [['none', 'No animation'], ['fade', 'Fade out and in'], ['slideUp', 'Slide up'], ['slideDown', 'Slide down'], ['slideLeft', 'Slide left'], ['slideRight', 'Slide right'], ['pop', 'Pop (scale up and back)'], ['flip', 'Flip'], ['flash', 'Flash'], ['count', 'Count to the new number']].concat(L.type === 'text' ? [['units', 'Per letter / word (out, then in)']] : []).concat([['custom', 'Custom keyframes (own timeline)...']]) })])
+    ];
+    if (pre === 'units') {
+      kidsU.push(grid([ua('Split', 'by', 'select', { def: 'letter', options: [['letter', 'Letters'], ['word', 'Words'], ['line', 'Lines']] }), ua('Preset', 'unit', 'select', { def: 'rise', options: Inspector.UNIT_PRESETS }),
+        ua('Frames', 'udur', 'number', { def: 8 }), ua('Stagger', 'stagger', 'number', { def: 2 }), ua('Order', 'order', 'select', { def: 'forward', options: Inspector.UNIT_ORDERS })]));
+      kidsU.push(h('p', { class: 'hint', text: 'The old text leaves unit by unit (the animation in reverse), then the new text comes in the same way. The swap happens when the last old unit has gone.' }));
+    }
+    if (pre !== 'none' && pre !== 'custom' && pre !== 'units') {
+      kidsU.push(grid([ua('Duration (frames)', 'dur', 'number', { def: 15 }), /^slide/.test(pre) ? ua('Distance (px)', 'dist', 'number', { def: 40 }) : null].filter(Boolean)));
+      kidsU.push(h('p', { class: 'hint', text: pre === 'count' ? 'Numbers count from the old value to the new one; text that is not a number swaps straight away.' : (pre === 'pop' || pre === 'flash' ? 'The new value shows straight away while the layer pops / flashes.' : 'The new value appears half way, when the old one is out of sight.') }));
+    }
+    if (pre === 'custom') {
+      var ctl = (L.upd || {}).tl, nk = 0; if (ctl && ctl.k) for (var ck in ctl.k) nk += ctl.k[ck].length;
+      kidsU.push(full([btn('Edit update timeline...', function () { UpdAnim.open(L.id); }, 'Opens this layer\u2019s own update timeline: keyframes and the update marker')]));
+      kidsU.push(h('p', { class: 'hint', text: ctl ? ctl.len + ' frames, ' + nk + ' keyframes, new value at frame ' + (ctl.swap || 0) + ' (the update marker).' : 'Its own short timeline with keyframes, and an update marker where the new value appears.' }));
+    }
+    if (pre !== 'none') kidsU.push(full([btn('Test in the viewer', function () { UpdAnim.play(L.id); }, 'Sends a new value to this field in the viewer and plays the animation')]));
+    section('Update animation', kidsU);
+  }
 
   /* ----- map any property to a CasparCG field ----- */
   var able = App.bindable(L), binds = L.bind || {}, rows = [];

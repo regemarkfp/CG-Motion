@@ -7,6 +7,20 @@
 <link rel="stylesheet" href="splash.css">
 </head>
 <body>
+<script>
+/* if anything fails while the editor starts, show it instead of an empty window */
+(function () {
+  function show(msg) {
+    try { if (window.cgNative && window.cgNative.reportError) window.cgNative.reportError(msg); } catch (e) {}
+    var d = document.getElementById('boot-err');
+    if (!d) { d = document.createElement('pre'); d.id = 'boot-err'; d.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;max-height:40%;overflow:auto;z-index:99999;margin:0;padding:12px 14px;background:#3a0d0d;color:#ffd6d6;border:1px solid #a33;border-radius:6px;font:12px/1.4 Consolas,monospace;white-space:pre-wrap'; (document.body || document.documentElement).appendChild(d); d.textContent = 'CG Motion hit an error while starting. Please send a screenshot of this box.\n\n'; }
+    d.textContent += msg + '\n';
+  }
+  window.__bootErrors = [];
+  window.addEventListener('error', function (e) { if (window.__booted) return; if (e.target && e.target !== window) { var src = e.target.src || e.target.href || ''; if (/lottie/i.test(src)) return; show('Could not load ' + src.split('/').slice(-2).join('/')); return; } var m = (e.message || 'Error') + (e.filename ? '  (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '') + (e.error && e.error.stack ? '\n' + e.error.stack : ''); window.__bootErrors.push(m); show(m); }, true);
+  window.addEventListener('unhandledrejection', function (e) { if (window.__booted) return; var m = 'Unhandled: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason); show(m); });
+})();
+</script>
 <div id="splash"><div class="sp-in"><img src="logo.png" alt="RegemarkFP" class="sp-logo"><div class="sp-name">CG Motion</div><div class="sp-tag">Capturing life in motion</div><div class="sp-by">by RegemarkFP</div></div><div class="sp-load"><div class="sp-bar"><i></i></div><span id="sp-ver">Loading</span></div></div>
 <div id="app">
   <div id="menubar">
@@ -33,7 +47,7 @@
     <button data-cmd="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
     <span class="grow"></span>
     <button data-cmd="save" title="Save project (Ctrl+S)">Save</button>
-    <button data-cmd="export" class="primary" title="Export the composition that is open as a single-file HTML template, into the project folder, named after the composition (Ctrl+E)">Export template</button>
+    <button data-cmd="export" class="primary" title="Export the template as a single-file HTML file into the project folder (Ctrl+E). Working inside a pre-comp exports the template(s) that use it.">Export template</button>
   </div>
   <div id="dock"></div>
   <div id="statusbar"><span id="status"></span><span class="grow"></span><span class="hint">Right-click a layer for more. Drag a panel tab to rearrange the workspace.</span></div>
@@ -103,6 +117,13 @@
 <script src="js/nodes.js"></script>
 <script src="js/dock.js"></script>
 <script src="js/loopic.js"></script>
+<script src="js/vmix.js"></script>
+<script src="js/psd.js"></script>
+<script src="js/zstd.js"></script>
+<script src="js/affinity.js"></script>
+<script src="js/afmodel.js"></script>
+<script src="js/afimport.js"></script>
+<script src="js/updanim.js"></script>
 <script src="js/io.js"></script>
 </body>
 </html>

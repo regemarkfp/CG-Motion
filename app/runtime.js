@@ -170,7 +170,7 @@
       var a = assets[id];
       if (a.type !== 'font') continue;
       if (onlyIn && onlyIn.indexOf(a.family) < 0) continue;
-      out += '@font-face{font-family:"' + a.family + '";src:url(' + a.src + ');}\n';
+      out += '@font-face{font-family:"' + a.family + '";src:url(' + a.src + ');' + (a.weight ? 'font-weight:' + a.weight + ';' : '') + (a.italic ? 'font-style:italic;' : '') + '}\n';
     }
     return out;
   }
@@ -418,11 +418,110 @@
       target.appendChild(span);
     }
   }
-  function setText(it, target, txt, L) {
-    var spec = styleSpec(L), sig = txt + specSig(spec);
+  /* ---------- text animation per letter / word / line ---------- */
+  /* the text split into units (spans), so each can move on its own; spaces stay plain text so lines still wrap */
+  function splitUnits(doc, target, text, by, units) {
+    var parts;
+    if (by === 'word') parts = String(text).split(/(\s+)/);
+    else if (by === 'line') parts = String(text).split(/(\n)/);
+    else parts = Array.from(String(text));
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (p === '') continue;
+      if (/^\s+$/.test(p)) { target.appendChild(doc.createTextNode(p)); continue; }
+      var sp = doc.createElement('span');
+      sp.style.display = 'inline-block'; sp.style.whiteSpace = 'pre';
+      sp.textContent = p; sp._c = {};
+      target.appendChild(sp); units.push(sp);
+    }
+  }
+  function fillUnits(doc, target, txt, spec, by) {
+    while (target.firstChild) target.removeChild(target.firstChild);
+    var units = [];
+    if (!spec) { splitUnits(doc, target, txt, by, units); return units; }
+    var parts = String(txt).split(spec.sep), segs = spec.segs || [], join = spec.join == null ? ' ' : spec.join, first = true;
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] === '') continue;
+      var st = segs[Math.min(i, segs.length - 1)] || {};
+      if (!first && join) splitUnits(doc, target, join, by, units);
+      first = false;
+      var span = doc.createElement('span');
+      applySeg(span, st);
+      splitUnits(doc, span, (st.before || '') + parts[i] + (st.after || ''), by, units);
+      target.appendChild(span);
+    }
+    return units;
+  }
+  function countUnits(text, by) {
+    var parts = by === 'word' ? String(text).split(/(\s+)/) : (by === 'line' ? String(text).split(/(\n)/) : Array.from(String(text)));
+    var n = 0; for (var i = 0; i < parts.length; i++) if (parts[i] !== '' && !/^\s+$/.test(parts[i])) n++;
+    return n;
+  }
+  /* the order units go in: forward, backward, from the centre, from the edges, random (the same every time) */
+  function unitRank(i, n, order, seed) {
+    if (order === 'backward') return n - 1 - i;
+    if (order === 'center') return Math.round(Math.abs(i - (n - 1) / 2));
+    if (order === 'edges') return Math.round((n - 1) / 2 - Math.abs(i - (n - 1) / 2));
+    if (order === 'random') {
+      var h = 2166136261 ^ (seed || 0);
+      h = Math.imul(h ^ (i + 1), 16777619); h ^= h >>> 13; h = Math.imul(h, 2246822507); h ^= h >>> 16;
+      return ((h >>> 0) % 1000) / 1000 * (n - 1);
+    }
+    return i;
+  }
+  function easeOutCubic(p) { return 1 - Math.pow(1 - p, 3); }
+  function easeOutBack(p) { var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); }
+  /* a unit's look at progress p (0 = not there yet, 1 = in place) */
+  function unitPose(preset, p) {
+    var o = { op: 1, tx: 0, ty: 0, sc: 1, rot: 0, rx: 0, blur: 0 };
+    if (p >= 1) return o;
+    if (preset === 'typewriter') { o.op = p > 0 ? 1 : 0; return o; }
+    var e = easeOutCubic(Math.max(0, p));
+    o.op = e;
+    switch (preset) {
+      case 'rise': o.ty = (1 - e) * 0.6; break;
+      case 'drop': o.ty = -(1 - e) * 0.6; break;
+      case 'slide': o.tx = (1 - e) * 0.8; break;
+      case 'slideRight': o.tx = -(1 - e) * 0.8; break;
+      case 'scaleUp': o.sc = Math.max(0.001, p <= 0 ? 0.001 : easeOutBack(p)); o.op = p > 0 ? Math.min(1, p * 3) : 0; break;
+      case 'zoomOut': o.sc = 1 + (1 - e) * 1.5; break;
+      case 'blur': o.blur = (1 - e) * 0.3; break;
+      case 'flip': o.rx = (1 - e) * 90; break;
+      case 'spin': o.rot = -(1 - e) * 90; o.sc = 0.5 + 0.5 * e; break;
+    }
+    return o;
+  }
+  function combinePose(a, b) { return { op: a.op * b.op, tx: a.tx + b.tx, ty: a.ty + b.ty, sc: a.sc * b.sc, rot: a.rot + b.rot, rx: a.rx + b.rx, blur: a.blur + b.blur }; }
+  function applyUnit(sp, o, fsPx) {
+    var tf = (o.rx ? 'perspective(' + r4(fsPx * 6) + 'px) ' : '') + (o.tx || o.ty ? 'translate(' + r4(o.tx) + 'em,' + r4(o.ty) + 'em) ' : '') + (o.rot ? 'rotate(' + r4(o.rot) + 'deg) ' : '') + (o.rx ? 'rotateX(' + r4(o.rx) + 'deg) ' : '') + (o.sc !== 1 ? 'scale(' + r4(o.sc) + ')' : '');
+    tf = tf || 'none';
+    if (sp._c.tf !== tf) { sp._c.tf = tf; sp.style.transform = tf; }
+    var op = String(r4(Math.max(0, Math.min(1, o.op))));
+    if (sp._c.op !== op) { sp._c.op = op; sp.style.opacity = op; }
+    var fl = o.blur > 0.001 ? 'blur(' + r4(o.blur * fsPx) + 'px)' : 'none';
+    if (sp._c.fl !== fl) { sp._c.fl = fl; sp.style.filter = fl; }
+  }
+  /* a text layer's in / out animation by unit at frame t; ta = { by, in: {preset, at, dur, stagger, order}, out: {...} } */
+  function taActive(L) { var a = L.ta; return !!(a && a.on && ((a.in && a.in.preset && a.in.preset !== 'none') || (a.out && a.out.preset && a.out.preset !== 'none'))); }
+  function taPose(L, i, n, t) {
+    var a = L.ta, o = { op: 1, tx: 0, ty: 0, sc: 1, rot: 0, rx: 0, blur: 0 }, seed = 0, s = String(L.id || '');
+    for (var q = 0; q < s.length; q++) seed = (seed * 31 + s.charCodeAt(q)) | 0;
+    [['in', 1], ['out', -1]].forEach(function (w) {
+      var g = a[w[0]];
+      if (!g || !g.preset || g.preset === 'none') return;
+      var k = unitRank(i, n, g.order, seed), dur = Math.max(0.001, +g.dur || 10), st = +g.stagger || 0, at = +g.at || 0;
+      var p = (t - at - k * st) / dur;
+      p = Math.max(0, Math.min(1, p));
+      o = combinePose(o, unitPose(g.preset, w[1] > 0 ? p : 1 - p));
+    });
+    return o;
+  }
+  function setText(it, target, txt, L, by) {
+    var spec = styleSpec(L), sig = txt + specSig(spec) + (by ? '\u0002' + by : '');
     if (it.c.txt === sig) return;
     it.c.txt = sig;
-    fillRich(target.ownerDocument || document, target, txt, spec);
+    if (by) it.units = fillUnits(target.ownerDocument || document, target, txt, spec, by);
+    else { it.units = null; fillRich(target.ownerDocument || document, target, txt, spec); }
     bump(it, 'txt');
   }
   /* a CSS variable on the layer element (tables use them so colours animate without touching every cell) */
@@ -829,10 +928,14 @@
     var L = this.viewOf(it), pr = this.project;
     var x = evalProp(L, 'x', t, pr), y = evalProp(L, 'y', t, pr);
     var sx = evalProp(L, 'sx', t, pr) / 100, sy = evalProp(L, 'sy', t, pr) / 100;
+    var ufx = (this.live || this.updScrub) && L.upd ? this.updFx(L) : null;
+    it.uop = ufx ? ufx.op : 1;
+    it.ublur = ufx && ufx.blur ? ufx.blur : 0;
+    if (ufx) { x += ufx.dx; y += ufx.dy; sx *= ufx.s; sy *= ufx.s * ufx.sy; }
     /* on a text box, scale makes the box bigger or smaller and the text keeps its size */
     it.kx = 1; it.ky = 1;
     if (L.type === 'text' && L.box && L.boxScale !== false) { it.kx = Math.abs(sx); it.ky = Math.abs(sy); sx = 1; sy = 1; }
-    var r = evalProp(L, 'rot', t, pr) * Math.PI / 180, cos = Math.cos(r), sin = Math.sin(r);
+    var r = (evalProp(L, 'rot', t, pr) + (ufx && ufx.rot ? ufx.rot : 0)) * Math.PI / 180, cos = Math.cos(r), sin = Math.sin(r);
     var kx = evalProp(L, 'skx', t, pr), ky = evalProp(L, 'sky', t, pr), m;
     if (kx || ky) {
       /* rotate x skew x scale */
@@ -945,10 +1048,115 @@
     return g.cur;
   };
 
-  /* a data value; inside a repeater the copy's own numbered field wins (name3), else the plain field (name) */
+  /* ---------- update animations: a field that changes plays an animation on the layers showing it ---------- */
+  var UPD_DIST = { slideUp: [0, -1], slideDown: [0, 1], slideLeft: [-1, 0], slideRight: [1, 0] };
+  /* the update timeline's channels and their resting values */
+  var UPD_CH = { dx: 0, dy: 0, sc: 100, scy: 100, rot: 0, op: 100, blur: 0 };
+  function updKey(keys, f, rest) {
+    if (!keys || !keys.length) return rest;
+    if (f <= keys[0].t) return keys[0].v;
+    var i = -1;
+    for (var j = 0; j < keys.length; j++) if (keys[j].t <= f) i = j;
+    if (i >= keys.length - 1) return keys[keys.length - 1].v;
+    var a = keys[i], b = keys[i + 1], e = a.e || 'ease';
+    if (e === 'hold' || b.t <= a.t) return a.v;
+    var u = (f - a.t) / (b.t - a.t);
+    if (e === 'ease') u = updEase(u); else if (e === 'in') u = u * u * u; else if (e === 'out') u = 1 - Math.pow(1 - u, 3);
+    return a.v + (b.v - a.v) * u;
+  }
+  function updPose(tl, f) {
+    var k = tl.k || {}, v = {}, c;
+    for (c in UPD_CH) v[c] = updKey(k[c], f, UPD_CH[c]);
+    return { dx: v.dx, dy: v.dy, s: v.sc / 100, sy: v.scy / 100, op: Math.max(0, v.op / 100), rot: v.rot, blur: Math.max(0, v.blur) };
+  }
+  function updEase(u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
+  function isNum(v) { return v != null && v !== '' && /^\s*-?\d+(\.\d+)?\s*$/.test(String(v)); }
+  /* which layers show a key (a field can be read with a repeater / layer suffix added) */
+  P.keyLayers = function (key) {
+    var out = [], id, L, seen = {};
+    for (id in this.all) {
+      L = this.all[id] && this.all[id].layer;
+      if (!L || !L.key || seen[L.id] || !L.upd || !L.upd.preset || L.upd.preset === 'none') continue;
+      if (key === L.key || (key.indexOf(L.key) === 0 && /^[_A-Za-z0-9]/.test(key.charAt(L.key.length)))) { seen[L.id] = 1; out.push(L); }
+    }
+    return out;
+  };
+  /* changes: { key: { from: oldValue, to: newValue } } */
+  P.updated = function (changes) {
+    var fps = this.rootComp.fps || 50, k, self = this, invoked = {};
+    this.upd = this.upd || {}; this.held = this.held || {};
+    for (k in changes) {
+      var ch = changes[k];
+      if (String(ch.from == null ? '' : ch.from) === String(ch.to == null ? '' : ch.to)) continue;
+      this.keyLayers(k).forEach(function (L) {
+        var u = L.upd, dur = Math.max(1, +u.dur || 15) / fps;
+        if (u.preset === 'units' && L.type === 'text') {
+          /* per letter / word: the old text goes out unit by unit, then the new text comes in */
+          var by = u.by || 'letter', ud = Math.max(1, +u.udur || 8) / fps, us = Math.max(0, +u.stagger == null ? 2 : +u.stagger) / fps;
+          if (u.stagger == null || u.stagger === '') us = 2 / fps;
+          var oldTxt = ch.from != null ? String(ch.from) : String(L.text || ''), nOld = countUnits(oldTxt, by), sd = 0, ss = String(L.id);
+          for (var qi = 0; qi < ss.length; qi++) sd = (sd * 31 + ss.charCodeAt(qi)) | 0;
+          var outEnd = nOld ? ud + (nOld - 1) * us : 0;
+          self.upd[L.id] = { units: true, by: by, preset: u.unit || 'rise', order: u.order || 'forward', start: self.wall, dur: ud, stag: us, outEnd: outEnd, seed: sd };
+          if (outEnd > 0) self.held[k] = { v: ch.from, until: self.wall + outEnd };
+          return;
+        }
+        if (u.preset === 'custom') {
+          /* the layer's own update timeline: keyframed offsets, the new value shows at its update marker */
+          var tl = u.tl || {}, len = Math.max(1, +tl.len || 25), sw = Math.max(0, Math.min(len, +tl.swap || 0));
+          self.upd[L.id] = { custom: tl, start: self.wall, dur: len / fps, fps: fps };
+          if (sw > 0) self.held[k] = { v: ch.from, until: self.wall + sw / fps };
+          return;
+        }
+        var swapAt = u.preset === 'pop' || u.preset === 'flash' ? 0 : (u.preset === 'count' ? dur : dur / 2);
+        self.upd[L.id] = { preset: u.preset, start: self.wall, dur: dur, dist: u.dist == null ? 40 : +u.dist };
+        var from0 = ch.from != null ? ch.from : (L.type === 'text' ? L.text : null);
+        if (u.preset === 'count' && isNum(from0) && isNum(ch.to)) self.held[k] = { count: true, from: +from0, to: +ch.to, start: self.wall, until: self.wall + dur, dec: Math.max((String(ch.to).split('.')[1] || '').length, (String(from0).split('.')[1] || '').length) };
+        else if (swapAt > 0) self.held[k] = { v: ch.from, until: self.wall + swapAt };
+      });
+    }
+    this.dirty = true;
+    this.gliding = true;
+  };
+  /* the animation offsets of a layer right now: dx, dy (px), scale and opacity multipliers */
+  P.updFx = function (L) {
+    if (this.updScrub && this.updScrub.id === L.id) return updPose((L.upd && L.upd.tl) || {}, this.updScrub.frame);
+    var a = this.upd && this.upd[L.id];
+    if (!a) return null;
+    if (a.units) { this.gliding = true; return null; }
+    if (a.custom) {
+      var f = (this.wall - a.start) * a.fps;
+      if (f >= (+a.custom.len || 25)) { delete this.upd[L.id]; return null; }
+      this.gliding = true;
+      return updPose(a.custom, Math.max(0, f));
+    }
+    var u = (this.wall - a.start) / a.dur;
+    if (u >= 1 || u < 0) { delete this.upd[L.id]; return null; }
+    this.gliding = true;
+    var o = { dx: 0, dy: 0, s: 1, sy: 1, op: 1 }, d = UPD_DIST[a.preset];
+    if (d) {
+      if (u < 0.5) { var e1 = updEase(u * 2); o.dx = d[0] * a.dist * e1; o.dy = d[1] * a.dist * e1; o.op = 1 - e1; }
+      else { var e2 = 1 - updEase((u - 0.5) * 2); o.dx = -d[0] * a.dist * e2; o.dy = -d[1] * a.dist * e2; o.op = 1 - e2; }
+    } else if (a.preset === 'fade') o.op = Math.abs(1 - 2 * updEase(u));
+    else if (a.preset === 'pop') o.s = 1 + 0.18 * Math.sin(Math.PI * u);
+    else if (a.preset === 'flip') o.sy = Math.max(0.001, Math.abs(Math.cos(Math.PI * updEase(u))));
+    else if (a.preset === 'flash') o.op = 1 - 0.85 * Math.abs(Math.sin(Math.PI * u * 2));
+    return o;
+  };
+  /* a data value; inside a repeater the copy's own numbered field wins (name3), else the plain field (name).
+     While an update animation swaps it, the old value shows until the swap point (a count animates the number). */
+  P.heldV = function (k) {
+    var h = this.held && this.held[k];
+    if (!h) return undefined;
+    if (this.wall >= h.until) { delete this.held[k]; return undefined; }
+    this.gliding = true;
+    if (h.count) { var u = updEase(Math.max(0, Math.min(1, (this.wall - h.start) / (h.until - h.start)))); return { v: (h.from + (h.to - h.from) * u).toFixed(h.dec) }; }
+    return { v: h.v };
+  };
   P.dv = function (key) {
-    var d = this.data, s = this.sfx;
-    if (s) { var v = d[key + s]; if (v != null) return v; }
+    var d = this.data, s = this.sfx, hv;
+    if (s) { hv = this.heldV(key + s); if (hv) return hv.v; var v = d[key + s]; if (v != null) return v; }
+    hv = this.heldV(key); if (hv) return hv.v;
     return d[key];
   };
   P.subTime = function (it, t) {
@@ -990,11 +1198,12 @@
 
       if (L.type === 'text') {
         var dtx = L.key ? this.dv(L.key) : null, txt = dtx != null ? String(dtx) : (L.text || '');
+        var uua = this.upd && this.upd[L.id] && this.upd[L.id].units ? this.upd[L.id] : null, uby = uua ? uua.by : (taActive(L) ? (L.ta.by || 'letter') : null);
         if (this.repN != null && txt.indexOf('{#}') >= 0) txt = txt.split('{#}').join(String(this.repN));
         txt = lineBreaks(txt, L);
         var fs = ev('fontSize'), tr = ev('tracking'), lh = ev('lineHeight');
         S(it, 'fontFamily', '"' + (L.font || 'Arial') + '", Arial, sans-serif');
-        var fitOn = L.fitBox && L.box && L.boxWrap !== false;
+        var fitOn = L.fitBox && L.box;
         S(it, 'fontSize', r4(fitOn && it.fitFs ? it.fitFs : fs) + 'px');
         S(it, 'letterSpacing', r4(tr) + 'px');
         S(it, 'lineHeight', String(r4(lh)));
@@ -1020,7 +1229,7 @@
           S(it, 'overflow', L.clip ? 'hidden' : 'visible');
           S(it, 'whiteSpace', wrapOn ? 'pre-wrap' : 'pre');
           S(it, 'overflowWrap', wrapOn ? 'break-word' : 'normal');
-          setText(it, it.tx, txt, L);
+          setText(it, it.tx, txt, L, uby);
           /* one-line boxes can squeeze long text so it never leaves the frame */
           var sq = 1;
           if (!wrapOn && L.squeeze) {
@@ -1053,11 +1262,27 @@
         } else {
         if (L.wrapW > 0) { S(it, 'width', L.wrapW + 'px'); S(it, 'whiteSpace', 'pre-wrap'); }
         else { S(it, 'width', 'auto'); S(it, 'whiteSpace', 'pre'); }
-        setText(it, el, txt, L);
+        setText(it, el, txt, L, uby);
         var mkey = [it.c.txt, L.font, fs, tr, lh, L.weight, L.italic, L.upper, L.tcase, L.wrapW, pad, this.fontVer].join('|');
         if (it.mkey !== mkey) { it.mkey = mkey; it.w = el.offsetWidth; it.h = el.offsetHeight; }
         it.fit = (L.maxW > 0 && !(L.wrapW > 0) && it.w > L.maxW) ? L.maxW / it.w : 1;
         it.alignOff = L.align === 'center' ? it.w / 2 : (L.align === 'right' ? it.w : 0);
+        }
+        if (it.units && it.units.length) {
+          /* per-unit poses: the layer's in / out animation, and a running per-letter update animation */
+          var un = it.units.length, ufs = (fitOn && it.fitFs) ? it.fitFs : fs, lt = t, ua = uua, uel = ua ? this.wall - ua.start : 0;
+          if (ua && uel > ua.outEnd + ua.dur + (un - 1) * ua.stag + 0.05) { delete this.upd[L.id]; ua = null; this.dirty = true; }
+          if (ua) this.gliding = true;
+          for (var ui = 0; ui < un; ui++) {
+            var upo = taActive(L) ? taPose(L, ui, un, lt) : { op: 1, tx: 0, ty: 0, sc: 1, rot: 0, rx: 0, blur: 0 };
+            if (ua) {
+              var uk = unitRank(ui, un, ua.order, ua.seed), up;
+              if (uel < ua.outEnd) up = 1 - Math.max(0, Math.min(1, (uel - uk * ua.stag) / ua.dur));
+              else up = Math.max(0, Math.min(1, (uel - ua.outEnd - uk * ua.stag) / ua.dur));
+              upo = combinePose(upo, unitPose(ua.preset, up));
+            }
+            applyUnit(it.units[ui], upo, ufs);
+          }
         }
       } else if (L.type === 'shape') {
         this.size(node, it, L, t, wall, ev);
@@ -1277,8 +1502,8 @@
             if (rw.vis !== vis) { rw.vis = vis; rw.el.style.display = vis ? 'block' : 'none'; bump(it, 'row'); }
             if (rw.tf !== rtf) { rw.tf = rtf; rw.el.style.transform = rtf; bump(it, 'row'); }
             if (!vis) continue;
-            var ps = this.sfx, pn = this.repN;
-            this.sfx = ps + (ps ? '_' : '') + (first + ri); this.repN = first + ri;
+            var ps = this.sfx, pn = this.repN, pb = ps + (L.keySuffix || '');
+            this.sfx = pb + (pb ? '_' : '') + (first + ri); this.repN = first + ri;
             this.renderComp(rw.node, Math.min(st0 - ri * stag, sc.duration - 0.001), wall);
             this.sfx = ps; this.repN = pn;
           }
@@ -1287,7 +1512,9 @@
           S(it, 'width', it.w + 'px'); S(it, 'height', it.h + 'px');
           var st = this.subTime(it, t);
           st = Math.min(st, it.sub.comp.duration - 0.001);
+          var psx = this.sfx; if (L.keySuffix) this.sfx = psx + L.keySuffix;
           this.renderComp(it.sub, st, wall);
+          this.sfx = psx;
         }
       }
     }
@@ -1309,7 +1536,7 @@
       return;
     }
 
-    var op = Math.max(0, Math.min(100, ev('op'))) / 100;
+    var op = Math.max(0, Math.min(100, ev('op'))) / 100 * (it.uop == null ? 1 : it.uop);
     S(it, 'opacity', String(r4(op)));
     it.op = op;
 
@@ -1328,7 +1555,7 @@
     } else if (it.c.cp) { it.c.cp = ''; el.style.webkitClipPath = ''; el.style.clipPath = ''; bump(it, 'cp'); }
 
     var f = '', v;
-    v = ev('blur'); if (v > 0) f += 'blur(' + r4(v) + 'px) ';
+    v = ev('blur') + (it.ublur || 0); if (v > 0) f += 'blur(' + r4(v) + 'px) ';
     v = ev('bright'); if (v !== 100) f += 'brightness(' + r4(v) + '%) ';
     v = ev('contrast'); if (v !== 100) f += 'contrast(' + r4(v) + '%) ';
     v = ev('sat'); if (v !== 100) f += 'saturate(' + r4(v) + '%) ';
@@ -2307,8 +2534,9 @@
     this.startLoop();
   };
   P.update = function (d) {
-    var o = parseData(d), k;
-    for (k in o) this.data[k] = o[k];
+    var o = parseData(d), k, ch = {};
+    for (k in o) { ch[k] = { from: this.data[k], to: o[k] }; this.data[k] = o[k]; }
+    if (this.live && this.shown) this.updated(ch);
     this.dirty = true;
     if (!this.looping) this.render();
     if (this.live && this.shown) this.startLoop();
@@ -2333,6 +2561,6 @@
   root.CGRuntime = {
     Player: Player, evalProp: evalProp, DEF: DEF, COLOR_PROPS: COLOR_PROPS, parseColor: parseColor, toHex: toHex, css: css,
     bezier: bezier, easeCurve: easeCurve, matteSpecs: matteSpecs, baseProp: baseProp, BOOLS: BOOLS, NUMS: NUMS, normColor: normColor, swatchColor: swatchColor, resolveSrc: resolveSrc, mul: mul, invert: invert, apply: apply, translate: translate,
-    texTile: texTile, TEX_CSS: TEX_CSS, installFonts: installFonts, parseData: parseData, bindCaspar: bindCaspar, parseTable: parseTable, parseSeries: parseSeries, parseDual: parseDual, cellFields: cellFields, cellMap: cellMap, TEX_PREVIEW: TEX_PREVIEW, TEXF: TEXF, TEXP: TEXP
+    texTile: texTile, TEX_CSS: TEX_CSS, updKey: updKey, UPD_CH: UPD_CH, installFonts: installFonts, parseData: parseData, bindCaspar: bindCaspar, parseTable: parseTable, parseSeries: parseSeries, parseDual: parseDual, cellFields: cellFields, cellMap: cellMap, TEX_PREVIEW: TEX_PREVIEW, TEXF: TEXF, TEXP: TEXP
   };
 })(typeof window !== 'undefined' ? window : this);

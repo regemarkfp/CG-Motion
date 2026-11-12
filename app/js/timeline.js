@@ -235,7 +235,7 @@ Timeline.leftDbl = function (e) {
   var row = e.target.closest('.tl-row.layer');
   if (!row || !e.target.closest('.nm')) return;
   var L = App.layer(row.dataset.id);
-  UI.prompt('Rename layer', L.name).then(function (v) { if (v) { L.name = v; App.commit(); } });
+  UI.prompt('Rename layer', L.name).then(function (v) { if (v) { var k = App.renameLayer(L, v); App.commit(); if (k) UI.status('Field renamed to ' + k + ' with the layer.'); } });
 };
 
 Timeline.trackDown = function (e) {

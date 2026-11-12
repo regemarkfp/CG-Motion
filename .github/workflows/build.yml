@@ -56,6 +56,9 @@ jobs:
           CSC_KEY_PASSWORD: ${{ matrix.os == 'windows-latest' && secrets.REGEMARKFP_PASSWORD || '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Check the Windows build has all the editor files
+        if: runner.os == 'Windows'
+        run: node tools/check-build.js
       - uses: actions/upload-artifact@v4
         with:
           name: CG-Motion-${{ runner.os }}
