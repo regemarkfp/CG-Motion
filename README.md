@@ -2,6 +2,41 @@
 
 A timeline-based editor for CasparCG HTML templates. Free, runs locally, no subscription.
 
+**Download:** Windows, Mac and Linux installers are under [Releases](https://github.com/regemarkfp/CG-Motion/releases/latest).
+
+## Screenshots
+
+<p align="center"><img src="docs/images/04-the-cg-motion-workspace-assets-on-the-le.png" alt="The CG Motion workspace"><br><i>The workspace: assets, viewer, inspector and timeline, with keyframes, stop markers and invokes.</i></p>
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/33-text-animation.png" alt="Text animation"><br><b>Text animation</b><br>Letters, words or lines rise, drop, fade, blur or type in one after another, with stagger and order.</td>
+<td width="50%" valign="top"><img src="docs/images/26-the-update-timeline-of-a-layer-with-keyf.png" alt="Update animations"><br><b>Update animations</b><br>Presets or your own keyframes on each layer's update timeline, played when CasparCG sends a new value.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/12-double-bars-a-head-to-head-comparison-wi.png" alt="Stat comparisons"><br><b>Stat comparisons</b><br>Double bars for head-to-head stats, every value a CasparCG field.</td>
+<td width="50%" valign="top"><img src="docs/images/08-a-worm-two-line-series-that-add-up-runs-.png" alt="Charts"><br><b>Charts</b><br>Worms, manhattans, bars, pies and donuts that draw on and update live.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/06-a-table-selected-in-the-editor-with-its-.png" alt="Tables"><br><b>Tables</b><br>Standings and scorecards with rows that animate in; paste straight from Excel.</td>
+<td width="50%" valign="top"><img src="docs/images/23-a-lower-third-on-air-temba-bavuma-c-show.png" alt="Text styles"><br><b>Text styles</b><br>One field, several looks: John|Smith|C becomes a thin first name, bold SURNAME and a raised (C).</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/19-all-twelve-built-in-textures-on-coloured.png" alt="Textures"><br><b>Textures</b><br>Grain, carbon, halftone, gradients and more, animated and maskable.</td>
+<td width="50%" valign="top"><img src="docs/images/25-the-node-screen-name-bar-is-the-parent-o.png" alt="Nodes"><br><b>Nodes</b><br>Parent and mask layers by dragging links between them.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/31-a-photoshop-lower-third-imported-groups-.png" alt="Photoshop and Affinity import"><br><b>Photoshop and Affinity import</b><br>Layered .psd and Affinity files come in with groups, text fields and masks in place.</td>
+<td width="50%" valign="top"><img src="docs/images/30-vmix-s-own-preview-next-to-the-same-titl.png" alt="vMix and Loopic import"><br><b>vMix and Loopic import</b><br>Bring existing vMix GT titles and Loopic projects across to CasparCG.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/27-the-control-panel-play-next-and-stop-the.png" alt="Test like CasparCG"><br><b>Test like CasparCG</b><br>Play, Next, Stop, invokes and every field with test values, before going on air.</td>
+<td width="50%" valign="top"><img src="docs/images/28-the-casparcg-panel-server-address-export.png" alt="Straight to the server"><br><b>Straight to the server</b><br>Export to the template folder and play on a running CasparCG server.</td>
+</tr>
+</table>
+
+More in the [user guide](docs/CG%20Motion%20Guide.pdf).
+
 ## Start
 
 ### As a Windows program (.exe)
