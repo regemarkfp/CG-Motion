@@ -59,9 +59,9 @@ jobs:
         run: |
           [ -n "$CSC_LINK" ] || unset CSC_LINK CSC_KEY_PASSWORD
           npx electron-builder ${{ matrix.target }} --publish never
-      - name: Check the Windows build has all the editor files
-        if: runner.os == 'Windows'
-        run: node tools/check-build.js
+      - name: Check the build has all the editor files (Windows and Linux)
+        if: runner.os != 'macOS'
+        run: node tools/check-build.js ${{ runner.os == 'Linux' && 'linux' || 'win' }}
       - uses: actions/upload-artifact@v4
         with:
           name: CG-Motion-${{ runner.os }}
