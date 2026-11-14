@@ -10,7 +10,7 @@ This guide covers **version 1.0**. It is updated with every release; the release
 
 ## Getting started
 
-CG Motion comes as a Windows program: install it with the Setup file, or run the Portable file without installing anything else.
+CG Motion comes as a Windows program (install it with the Setup file, or run the Portable file without installing anything else), a Linux program (an AppImage or a .deb package) and a Mac program (a .dmg for Intel and Apple Silicon Macs).
 
 ### Installing
 
@@ -25,6 +25,21 @@ This guide comes with CG Motion as **CG Motion Guide.pdf**, next to the program 
 If Windows shows **Windows protected your PC**, click **More info**, then **Run anyway**. If you were given **RegemarkFP.cer** and **Trust RegemarkFP.bat**, double-click the .bat once and confirm: Windows then shows RegemarkFP as the publisher.
 
 To update, install the new Setup over the old one; your projects and settings are kept. To remove CG Motion, use **Settings > Apps** in Windows.
+
+### Installing on Linux
+
+CG Motion runs on 64-bit Linux (Ubuntu 22.04 or newer, Debian 12, Linux Mint 21 and similar).
+
+- **CG-Motion-1.1.0-amd64.deb** installs CG Motion with a menu entry, on Ubuntu, Debian and Mint. Double-click it to open it in the software installer, or open a terminal in the folder with the file and type `sudo apt install ./CG-Motion-1.1.0-amd64.deb`. To remove it, type `sudo apt remove cg-motion`.
+- **CG-Motion-1.1.0-x86_64.AppImage** runs without installing. Right-click it, choose **Properties > Permissions** and tick **Allow executing file as program** (or type `chmod +x CG-Motion-1.1.0-x86_64.AppImage`), then double-click it.
+
+If the AppImage closes straight away on Ubuntu 24.04 or newer, start it from a terminal with `./CG-Motion-1.1.0-x86_64.AppImage --no-sandbox`, or use the .deb instead. Some AppImages also need the libfuse2 package: `sudo apt install libfuse2` (on Ubuntu 24.04 and Mint 22 it is called libfuse2t64).
+
+Everything works the same as on Windows. Settings and recent projects are kept in `~/.config/cg-motion`, and fonts are found in `/usr/share/fonts`, `/usr/local/share/fonts`, `~/.fonts` and `~/.local/share/fonts` for embedding into templates. Fonts installed only on a Windows PC are not on the Linux PC, so install the fonts your templates use there too, or the exported templates fall back to another font.
+
+### Installing on a Mac
+
+Open **CG Motion 1.1.0 arm64.dmg** (Apple Silicon) or **CG Motion 1.1.0 x64.dmg** (Intel) and drag CG Motion to Applications. CG Motion is not notarised by Apple, so the first time, right-click it in Applications, choose **Open**, then **Open** again (or allow it under **System Settings > Privacy & Security**).
 
 ### Opening CG Motion
 
@@ -702,4 +717,5 @@ A new row is added here, newest first, with every release, listing what's new an
 
 | Version | Released | What's new | Fixes |
 | --- | --- | --- | --- |
+| 1.1 | 14 November 2026 | Linux version (AppImage and .deb) and Mac version (.dmg for Intel and Apple Silicon), all built on GitHub with the Windows files and published together as a release | On Linux the splash screen is a solid dark window, as desktops without a compositor drew its see-through corners black. The Linux build is now checked for missing editor files too, like the Windows build. |
 | 1.0 | 9 October 2026 | First full release: Windows installer and portable app signed as RegemarkFP, RFP splash and colours, multiline text with shrink to fit, text styles with presets, tables, charts (including double bars for stat comparisons), crawls, Loopic import, vMix title import, Photoshop (.psd) import, Affinity file import (.af, .afdesign, .afphoto, .afpub), sequence optimising, motion blur, the Fit and sideways scrolling viewer controls, a tutorial project, the Data panel, textures (with halftone, gradient, radial glow, rays and rings, motion, sizing and refine controls, presets, layer masks and full CasparCG control), shadows that fall outside masks, children that do not take a parent's skew, the Hand tool and trackpad scrolling, this guide as a PDF next to the program, CasparCG control of every table cell, chart value and crawl item, a PDF variables sheet of every template with a still frame, its fields and its invokes, installed fonts embedded into exported templates automatically, and update animations (presets, or custom keyframes on each layer's own update timeline with an update marker) that play when a field changes, and text animation by letter, word or line, in and out on the timeline and per letter or word on updates | An empty grey window at startup on some PCs: CG Motion now recovers on its own, offers a restart without graphics acceleration, shows startup errors on screen, keeps a log, and has a safe-mode start file. Builds are now checked for missing editor files before an installer is made, and an incomplete installation says so instead of opening empty. An invoke's Plays list now offers every composition layer, not only those already set to run independently; choosing one sets it. Changes made inside a pre-comp didn't reach the template: Export template (and the CasparCG panel) now write the template(s) that use the open pre-comp. Pre-comps that share field names (left and right clocks) got the same values: composition layers now have a Field suffix, with a warning and one-click fix in the Control panel; a field also follows its layer when the layer is renamed. |
