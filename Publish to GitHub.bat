@@ -30,6 +30,7 @@ echo  Saving the changes...
 if not exist ".github\workflows" mkdir ".github\workflows"
 copy /y "tools\github-build.yml" ".github\workflows\build.yml" >nul
 git add -A
+git add --chmod=+x -- "build-linux.sh" "start-cg-motion.sh"
 git commit -m "CG Motion update %date% %time:~0,5%" >nul
 if errorlevel 1 echo  (nothing new to save since the last upload)
 echo.

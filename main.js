@@ -64,7 +64,9 @@ app.on('open-file', (e, p) => { e.preventDefault(); if (/\.(cgm|loo|html?)$/i.te
 let splash = null;
 function createSplash() {
   splash = new BrowserWindow({
-    width: 640, height: 440, frame: false, transparent: true, resizable: false, movable: true, show: false,
+    width: 640, height: 440, frame: false,
+    /* Linux desktops without a compositor draw transparent windows black: use a solid dark splash there */
+    transparent: process.platform !== 'linux', backgroundColor: process.platform === 'linux' ? '#131313' : undefined, resizable: false, movable: true, show: false,
     alwaysOnTop: true, skipTaskbar: false, center: true, hasShadow: true, title: 'CG Motion', icon: path.join(__dirname, 'app', 'icon.png'),
     webPreferences: { contextIsolation: true, nodeIntegration: false }
   });

@@ -1,17 +1,117 @@
 {
-  "name": "rfp-manager",
-  "version": "1.2.9",
-  "rfpRelease": 2,
-  "description": "All-in-one live production tool: assets, fixtures, productions, crew, live scoring and CasparCG graphics.",
-  "main": "server.js",
-  "license": "UNLICENSED",
-  "private": true,
-  "engines": { "node": ">=22.13" },
+  "name": "cg-motion",
+  "version": "1.1.0",
+  "description": "Timeline-based editor for CasparCG HTML templates",
+  "homepage": "https://regemarkfp.com/software/cg-motion",
+  "main": "main.js",
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning server.js",
-    "test": "node --disable-warning=ExperimentalWarning --test --test-force-exit --test-timeout=180000 \"tests/*.test.js\""
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --x64",
+    "dist:win": "electron-builder --win nsis portable --x64",
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64",
+    "dist:linux": "electron-builder --linux AppImage deb --x64"
   },
-  "optionalDependencies": {
-    "mongodb": "^6.10.0"
+  "dependencies": {
+    "lottie-web": "^5.12.2"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "productName": "CG Motion",
+  "author": {
+    "name": "RegemarkFP",
+    "email": "regemarkofficial@gmail.com"
+  },
+  "build": {
+    "appId": "com.cgmotion.editor",
+    "productName": "CG Motion",
+    "copyright": "Copyright \u00a9 2026 RegemarkFP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "fontindex.js",
+      "package.json",
+      "app/**/*",
+      "NOTICE.md"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "signtoolOptions": {
+        "publisherName": "RegemarkFP",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CG Motion",
+      "artifactName": "CG Motion Setup ${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "CG Motion ${version} Portable.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.graphics-design",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "CG Motion ${version} ${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "CG Motion ${version}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Graphics",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "RegemarkFP <regemarkofficial@gmail.com>",
+      "synopsis": "Timeline editor for CasparCG HTML templates",
+      "artifactName": "CG-Motion-${version}-${arch}.${ext}",
+      "mimeTypes": [
+        "application/x-cg-motion"
+      ]
+    },
+    "deb": {
+      "packageName": "cg-motion"
+    },
+    "fileAssociations": [
+      {
+        "ext": "cgm",
+        "name": "CG Motion project",
+        "description": "CG Motion project",
+        "icon": "build/icon.ico",
+        "mimeType": "application/x-cg-motion",
+        "role": "Editor"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "docs/CG Motion Guide.pdf",
+        "to": "CG Motion Guide.pdf"
+      }
+    ]
   }
 }

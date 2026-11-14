@@ -1,0 +1,4 @@
+# Linux scripts must keep Linux line endings, even when committed from Windows
+*.sh text eol=lf
+# Windows scripts keep Windows line endings
+*.bat text eol=crlf
