@@ -24,8 +24,8 @@ After updating the CG Motion files, run **Build CG Motion.bat** again and instal
 
 On a 64-bit Linux PC with Node.js 20 or newer, run `bash build-linux.sh` in the CG Motion folder. The `dist` folder then has:
 
-- **CG-Motion-<version>-x86_64.AppImage** runs without installing (`chmod +x` it first). On Ubuntu 24.04 and newer, start it with `--no-sandbox` if it closes straight away.
-- **CG-Motion-<version>-amd64.deb** installs CG Motion with a menu entry and `.cgm` file type: `sudo apt install ./dist/CG-Motion-<version>-amd64.deb`.
+- `CG-Motion-<version>-x86_64.AppImage` runs without installing (`chmod +x` it first). On Ubuntu 24.04 and newer, start it with `--no-sandbox` if it closes straight away.
+- `CG-Motion-<version>-amd64.deb` installs CG Motion with a menu entry and `.cgm` file type: `sudo apt install ./dist/CG-Motion-<version>-amd64.deb`.
 
 From the folder, `bash start-cg-motion.sh` runs CG Motion without building (add `--safe` for safe mode). GitHub also builds both Linux files on every upload (see below), so a Linux PC is not needed to make them.
 
