@@ -77,7 +77,7 @@ Double-click **Start CG Motion.bat**. The first run downloads the app shell (Ele
 
 ## Projects
 
-The app opens on a start screen with your recent projects. *New project* asks for a name, a project folder, the first template's name, size, frame rate and length. The project file is saved in that folder, and **Export template** writes the composition you have open into the same folder as `<composition name>.html`, with no dialog. Each composition is its own template and only carries the fonts, pictures and nested compositions it uses. The folder can be changed later (select nothing, then Project in the inspector).
+The app opens on a start screen with your recent projects. *New project* asks for a name, a project folder, the first template's name, size, frame rate and length. The project file is saved in that folder, and **Export template** writes the composition you have open into the same folder as `<composition name>.html`, with no dialog. Each composition is its own template and only carries the fonts, pictures and nested compositions it uses. **Dup** in the Compositions list (or Ctrl+Shift+D) duplicates a composition with its whole timeline, optionally with its own copies of the pre-comps inside it; right-click a pre-comp layer > Make composition unique gives just that layer its own copy. The folder can be changed later (select nothing, then Project in the inspector).
 
 ### Opening Loopic projects
 
