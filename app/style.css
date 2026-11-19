@@ -133,6 +133,7 @@ body.tool-text #stage-wrap{cursor:text}body.tool-rect #stage-wrap,body.tool-elli
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100}
 .modal{background:#2e2e2e;border:1px solid #000;border-radius:6px;padding:14px;width:340px;display:flex;flex-direction:column;gap:10px}
 .modal input{user-select:text;padding:5px}
+.modal label.chk{display:flex;align-items:center;gap:4px;cursor:pointer}.modal label.chk input{margin:0}
 .modal.wide{width:620px;max-width:90vw;max-height:84vh;overflow:auto}.modal.wide p{margin:0;user-select:text}
 .imp-notes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;user-select:text;color:#dbdbdb;font-size:12px;line-height:1.35}
 .modal-title{font-weight:600;color:#fff}
