@@ -399,6 +399,57 @@ App.duplicate = function () {
   });
   if (out.length) { App.sel = out; App.commit(); App.emit('sel'); }
 };
+/* ---------- duplicate a composition (timeline) ----------
+   The copy gets new layer ids (parents, masks, links and invokes follow them), its own invokes and the same
+   size, length, markers and repeat sections. Pre-comps inside are shared with the original, unless deep is set:
+   then every composition inside is copied too, so the copy can be changed without touching the original. */
+App.compNameFree = function (base) {
+  var names = App.project.comps.map(function (c) { return c.name; }), n = base, i = 2;
+  while (names.indexOf(n) >= 0) n = base + ' ' + i++;
+  return n;
+};
+App.duplicateComp = function (id, opts) {
+  opts = opts || {};
+  var p = App.project, src = App.comp(id), compMap = {}, made = [];
+  if (!src) return null;
+  function copyOne(c, name) {
+    var nid = uid('c');
+    compMap[c.id] = nid;
+    var json = JSON.stringify(c), idMap = {};
+    c.layers.forEach(function (L) { idMap[L.id] = uid('l'); });
+    /* every quoted layer id becomes the new one: parent, matte, matteMore, texture masks, pins ... */
+    json = json.replace(/"((?:[^"\\]|\\.)*)"/g, function (m, k) { return Object.prototype.hasOwnProperty.call(idMap, k) ? '"' + idMap[k] + '"' : m; });
+    var nc = JSON.parse(json);
+    nc.id = nid; nc.name = name;
+    p.comps.push(nc); made.push(nc);
+    /* invokes: those on this composition's main timeline, and those that drive one of its layers */
+    (p.actions || []).slice().forEach(function (a) {
+      var hit = (a.target === 'main' || !a.target) ? a.comp === c.id : !!idMap[a.target];
+      if (!hit) return;
+      var d = clone(a); d.id = uid('x');
+      if (idMap[a.target]) d.target = idMap[a.target]; else d.comp = nid;
+      p.actions.push(d);
+    });
+    if (opts.deep) nc.layers.forEach(function (L) {
+      if (L.type !== 'comp' || !App.comp(L.comp) || L.comp === nid) return;
+      if (!compMap[L.comp]) copyOne(App.comp(L.comp), App.compNameFree(App.comp(L.comp).name + ' copy'));
+      L.comp = compMap[L.comp];
+    });
+    return nc;
+  }
+  var out = copyOne(src, opts.name || App.compNameFree(src.name + ' copy'));
+  if (!opts.noCommit) { App.commit(); App.emit('project'); }
+  return { comp: out, count: made.length };
+};
+/* a composition layer gets its own copy of its composition, so editing it leaves the other layers that use it alone */
+App.makeCompUnique = function (L) {
+  if (!L || L.type !== 'comp' || !App.comp(L.comp)) return;
+  var r = App.duplicateComp(L.comp, { noCommit: true });
+  if (!r) return;
+  L.comp = r.comp.id;
+  App.commit(); App.emit('project'); App.emit('sel');
+  UI.status('"' + L.name + '" now uses its own copy: "' + r.comp.name + '".');
+};
 App.moveLayers = function (dir) {
   var c = App.comp(), ls = c.layers, sel = App.selLayers();
   if (dir > 0) sel.reverse();

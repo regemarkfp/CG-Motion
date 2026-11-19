@@ -175,21 +175,34 @@ Panels.assets = function (el) {
     });
   })]));
   p.comps.forEach(function (c) {
-    el.appendChild(h('div', { class: 'aitem' + (c.id === App.compId ? ' cur' : ''), ondblclick: function () { App.openComp(c.id); } }, [
+    function compMenu(e) {
+      e.preventDefault(); e.stopPropagation();
+      var items = [
+        ['Open', function () { App.openComp(c.id); }],
+        c.id !== App.compId ? ['Add to the current composition as a layer', function () { App.addCompLayer(c.id); }] : null,
+        '-',
+        ['Rename...', function () { UI.prompt('Rename composition', c.name).then(function (v) { if (v) { c.name = v; App.commit(); App.emit('project'); } }); }],
+        ['Duplicate...', function () { Panels.duplicateComp(c.id); }, 'Ctrl+Shift+D'],
+        c.id !== p.rootComp ? ['Make this the main composition (exported)', function () { p.rootComp = c.id; App.commit(); App.emit('project'); }] : null,
+        c.id !== p.rootComp ? '-' : null,
+        c.id !== p.rootComp ? ['Delete', function () {
+          if (!confirm('Delete composition "' + c.name + '"? Layers that use it will be removed.')) return;
+          p.comps = p.comps.filter(function (x) { return x !== c; });
+          p.comps.forEach(function (x) { x.layers = x.layers.filter(function (L) { return !(L.type === 'comp' && L.comp === c.id); }); });
+          if (App.compId === c.id) App.compId = p.rootComp;
+          App.sel = []; App.commit(); App.emit('project');
+        }] : null
+      ].filter(Boolean);
+      Menu.popup(items, e.clientX + 2, e.clientY + 2);
+    }
+    el.appendChild(h('div', { class: 'aitem' + (c.id === App.compId ? ' cur' : ''), ondblclick: function () { App.openComp(c.id); }, oncontextmenu: compMenu }, [
       h('span', { class: 'chip t-comp' }),
-      h('span', { class: 'an', text: c.name + (c.id === p.rootComp ? '  (main)' : ''), title: 'Double-click to open' }),
+      h('span', { class: 'an', text: c.name + (c.id === p.rootComp ? '  (main)' : ''), title: c.name + ' - double-click to open, right-click for more' }),
       h('span', { class: 'am', text: c.w + 'x' + c.h }),
       pbtn('Open', function () { App.openComp(c.id); }),
       c.id !== App.compId ? pbtn('+', function () { App.addCompLayer(c.id); }, 'Add to the current composition as a layer') : null,
-      pbtn('Ren', function () { UI.prompt('Rename composition', c.name).then(function (v) { if (v) { c.name = v; App.commit(); } }); }, 'Rename'),
-      c.id !== p.rootComp ? pbtn('Main', function () { p.rootComp = c.id; App.commit(); }, 'Make this the composition that is exported') : null,
-      c.id !== p.rootComp ? pbtn('×', function () {
-        if (!confirm('Delete composition "' + c.name + '"? Layers that use it will be removed.')) return;
-        p.comps = p.comps.filter(function (x) { return x !== c; });
-        p.comps.forEach(function (x) { x.layers = x.layers.filter(function (L) { return !(L.type === 'comp' && L.comp === c.id); }); });
-        if (App.compId === c.id) App.compId = p.rootComp;
-        App.sel = []; App.commit(); App.emit('project');
-      }, 'Delete') : null
+      pbtn('Dup', function () { Panels.duplicateComp(c.id); }, 'Duplicate this composition (its timeline, layers, keyframes, markers and invokes)'),
+      pbtn('⋯', compMenu, 'Rename, duplicate, make main, delete')
     ]));
   });
 
@@ -216,6 +229,38 @@ Panels.assets = function (el) {
       ]));
     });
   });
+};
+
+/* Duplicate a composition: asks for the name and, when it holds pre-comps, whether to copy those as well. */
+Panels.duplicateComp = function (id) {
+  var c = App.comp(id || App.compId);
+  if (!c) return;
+  var nested = c.layers.some(function (L) { return L.type === 'comp' && App.comp(L.comp); });
+  var name = h('input', { type: 'text', value: App.compNameFree(c.name + ' copy') });
+  var deep = h('input', { type: 'checkbox' }), open = h('input', { type: 'checkbox', checked: true });
+  var host = UI.doc.body, bg;
+  function done(ok) {
+    host.removeChild(bg);
+    if (!ok) return;
+    var r = App.duplicateComp(c.id, { name: name.value.trim() || App.compNameFree(c.name + ' copy'), deep: deep.checked });
+    if (!r) return;
+    if (open.checked) App.openComp(r.comp.id);
+    UI.status('Duplicated "' + c.name + '" as "' + r.comp.name + '"' + (r.count > 1 ? ', with ' + (r.count - 1) + ' pre-comp' + (r.count > 2 ? 's' : '') + ' copied too' : '') + '.');
+  }
+  bg = h('div', { class: 'modal-bg' }, h('div', { class: 'modal' }, [
+    h('div', { class: 'modal-title', text: 'Duplicate composition "' + c.name + '"' }),
+    h('label', { class: 'hint', text: 'Name of the copy' }), name,
+    nested ? h('label', { class: 'chk' }, [deep, h('span', { text: ' Also duplicate the pre-comps inside it' })]) : null,
+    nested ? h('div', { class: 'hint', text: 'Ticked: the copy gets its own pre-comps, so changing them leaves the original alone. Not ticked: both use the same pre-comps.' }) : null,
+    h('label', { class: 'chk' }, [open, h('span', { text: ' Open the copy' })]),
+    h('div', { class: 'modal-btns' }, [
+      h('button', { text: 'Cancel', onclick: function () { done(false); } }),
+      h('button', { class: 'primary', text: 'Duplicate', onclick: function () { done(true); } })
+    ])
+  ]));
+  name.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); });
+  host.appendChild(bg);
+  name.focus(); name.select();
 };
 
 /* ================= Control: data fields + invokes ================= */

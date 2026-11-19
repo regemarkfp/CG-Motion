@@ -402,7 +402,7 @@ Menu.defs = function () {
   return [
     ['File', [['Projects...', 'projects'], ['New project...', 'new', 'Ctrl+N'], ['Open...', 'open', 'Ctrl+O'], ['Import Loopic project (.loo)...', 'open'], ['Import vMix titles (.gtzip)...', 'importGt'], ['Import Photoshop file (.psd)...', 'importPsd'], ['Import Affinity file (.af, .afphoto, .afdesign)...', 'importAffinity'], '-', ['Save', 'save', 'Ctrl+S'], ['Save as...', 'saveas', 'Ctrl+Shift+S'], '-',
       ['Export template', 'export', 'Ctrl+E'], ['Export this composition on its own', 'exportOnly'], ['Export variables as CSV', 'csv'], ['Export variables sheet (PDF, all templates)...', 'varsPdf'], '-', ['Optimise sequences for playback', 'optimise']]],
-    ['Edit', [['Undo', 'undo', 'Ctrl+Z'], ['Redo', 'redo', 'Ctrl+Shift+Z'], '-', ['Copy', 'copy', 'Ctrl+C'], ['Paste', 'paste', 'Ctrl+V'], ['Duplicate', 'dup', 'Ctrl+D'], ['Delete', 'del', 'Del'], '-', ['Select all layers', 'selall', 'Ctrl+A']]],
+    ['Edit', [['Undo', 'undo', 'Ctrl+Z'], ['Redo', 'redo', 'Ctrl+Shift+Z'], '-', ['Copy', 'copy', 'Ctrl+C'], ['Paste', 'paste', 'Ctrl+V'], ['Duplicate', 'dup', 'Ctrl+D'], ['Delete', 'del', 'Del'], '-', ['Select all layers', 'selall', 'Ctrl+A'], '-', ['Duplicate composition...', 'dupComp', 'Ctrl+Shift+D']]],
     ['Layer', [['New text', 'toolText', 'T'], ['New rectangle', 'toolRect', 'R'], ['New ellipse', 'toolEllipse', 'O'], ['New image slot', 'slot'], ['New null', 'null'], ['New table', 'table'], ['New chart', 'chart'], ['New crawl', 'crawl'], '-',
       ['Make repeater', 'repeat'], ['Pre-compose', 'precomp', 'Ctrl+Shift+C'], '-', ['Bring forward', 'up', 'Ctrl+]'], ['Send backward', 'down', 'Ctrl+['], '-',
       ['Add stop marker', 'marker', 'M'], ['Add repeat section', 'loop'], ['Easy ease keyframes', 'ease', 'F9']]],
@@ -474,8 +474,9 @@ Menu.layer = function (e, L) {
       ['Make repeater', 'repeat'], ['Pre-compose', 'precomp'],
       L.type === 'comp' ? ['Open composition', function () { App.openComp(L.comp); }] : ['Show in node screen', function () { Nodes.toggle(true); }]
     ];
+    if (L.type === 'comp' && App.comp(L.comp)) items.push(['Duplicate composition...', function () { Panels.duplicateComp(L.comp); }], ['Make composition unique (own copy for this layer)', function () { App.makeCompUnique(L); }]);
   } else {
-    items = [['Paste', 'paste', 'Ctrl+V'], '-', ['New text', 'toolText'], ['New rectangle', 'toolRect'], ['New ellipse', 'toolEllipse'], ['New image slot', 'slot'], ['New null', 'null'], ['New table', 'table'], ['New chart', 'chart'], ['New crawl', 'crawl'], '-', ['Fit composition', 'fit']];
+    items = [['Paste', 'paste', 'Ctrl+V'], ['Duplicate this composition...', 'dupComp', 'Ctrl+Shift+D'], '-', ['New text', 'toolText'], ['New rectangle', 'toolRect'], ['New ellipse', 'toolEllipse'], ['New image slot', 'slot'], ['New null', 'null'], ['New table', 'table'], ['New chart', 'chart'], ['New crawl', 'crawl'], '-', ['Fit composition', 'fit']];
   }
   Menu.popup(items, e.clientX + 2, e.clientY + 2);
 };

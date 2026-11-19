@@ -170,7 +170,7 @@ IO.openTutorial = function () {
 IO.showShortcuts = function () {
   var rows = [['Space', 'Play / pause'], [', and .', 'Step a frame (Shift = 10)'], ['J / K', 'Previous / next keyframe'], ['M', 'Stop marker'], ['F9', 'Easy ease'], ['U', 'Show / hide layer properties'],
     ['V T R O', 'Select, Text, Rectangle, Ellipse'], ['Arrows', 'Nudge (Shift = 10)'], ['[ / ]', 'Move layer start / end to the playhead'], ['Alt + [ / ]', 'Trim'], ['Ctrl + [ / ]', 'Layer order'],
-    ['Ctrl+C / V / D', 'Copy, paste, duplicate'], ['Ctrl+Shift+C', 'Pre-compose'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+S / O / N / E', 'Save, open, new, export'],
+    ['Ctrl+C / V / D', 'Copy, paste, duplicate'], ['Ctrl+Shift+C', 'Pre-compose'], ['Ctrl+Shift+D', 'Duplicate the open composition'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+S / O / N / E', 'Save, open, new, export'],
     ['Wheel', 'Zoom the viewer'], ['Tilt wheel or Shift + wheel', 'Scroll the viewer sideways'], ['Space + drag, middle-drag', 'Pan the viewer'], ['H', 'Hand tool: drag to move around'], ['Pinch or Ctrl + wheel', 'Zoom smoothly (trackpad)'], ['Two fingers', 'Move around (View > Trackpad scrolling, or the Hand tool)']];
   var host = UI.doc.body;
   function close() { if (bg.parentNode) host.removeChild(bg); }
@@ -563,7 +563,7 @@ Main.cmds = {
   snapT: function () { App.ui.snap = App.ui.snap === false; $('#snap').checked = App.ui.snap; },
   resetLayout: function () { Dock.reset(); },
   'new': IO.newProject, projects: function () { IO.showStart(); }, open: IO.open, save: function () { IO.save(false); }, saveas: function () { IO.save(true); }, 'export': function () { IO.exportTemplate(); }, exportOnly: function () { IO.exportTemplate(true); },
-  undo: App.undo, redo: App.redo, dup: App.duplicate, precomp: App.precompose, del: Main.del,
+  undo: App.undo, redo: App.redo, dup: App.duplicate, dupComp: function () { Panels.duplicateComp(App.compId); }, precomp: App.precompose, del: Main.del,
   'null': function () { App.addLayer('null'); },
   table: function () { App.addLayer('table'); }, chart: function () { App.addLayer('chart'); }, crawl: function () { App.addLayer('crawl'); },
   repeat: function () {
@@ -602,7 +602,7 @@ Main.key = function (e) {
     if (typing) return;
     if (lk === 'z') { e.preventDefault(); if (e.shiftKey) App.redo(); else App.undo(); }
     else if (lk === 'y') { e.preventDefault(); App.redo(); }
-    else if (lk === 'd') { e.preventDefault(); App.duplicate(); }
+    else if (lk === 'd') { e.preventDefault(); if (e.shiftKey) Panels.duplicateComp(App.compId); else App.duplicate(); }
     else if (lk === 'c') { if (e.shiftKey) { e.preventDefault(); App.precompose(); } else App.copy(); }
     else if (lk === 'v') { e.preventDefault(); App.paste(); }
     else if (lk === 'a') { e.preventDefault(); App.sel = App.comp().layers.map(function (L) { return L.id; }); App.emit('sel'); }
