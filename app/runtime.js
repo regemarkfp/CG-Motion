@@ -351,6 +351,17 @@
         item.matteItem = ML;
         item.matteList = list;
         item.multi = !!(item.layer.matteMore && item.layer.matteMore.length);
+        /* layers next to each other that use the same solid shape as their mask share one clipped wrapper:
+           the graphics card then clips once instead of once per layer */
+        var prevIt = i > 0 ? node.items[i - 1] : null;
+        if (!item.multi && groupable(item.layer, ML.layer) && prevIt && prevIt.wrap && !prevIt.multi && prevIt.matteItem === ML &&
+            (prevIt.layer.matteMode || 'alpha') === (item.layer.matteMode || 'alpha') && groupable(prevIt.layer, ML.layer) && prevIt.wrap.parentNode === parentEl) {
+          prevIt.grp = true; item.grp = true;
+          item.wrap = prevIt.wrap; item.wc = prevIt.wc;
+          item.wrap.appendChild(item.el);
+          item.el.style.display = item.tx ? 'flex' : 'block';
+          continue;
+        }
         var wrap = document.createElement('div');
         wrap.style.cssText = 'position:absolute;left:0;top:0;transform-origin:0 0;display:none;';
         wrap.appendChild(item.el);
@@ -1192,7 +1203,7 @@
     if (L.type === 'null') { it.w = 100; it.h = 100; }
 
     if (active) {
-      if (it.wrap) { if (it.wc.display !== 'block') { it.wc.display = 'block'; it.wrap.style.display = 'block'; } }
+      if (it.wrap) { if (it.wc.display !== 'block') { it.wc.display = 'block'; it.wrap.style.display = 'block'; } if (it.grp) S(it, 'display', it.tx ? 'flex' : 'block'); }
       else S(it, 'display', it.tx ? 'flex' : 'block');
       S(it, 'visibility', ((it.isMatte || it.isTexMask) && !L.matteShow) ? 'hidden' : 'visible');
 
@@ -1531,7 +1542,7 @@
 
     if (!active) {
       it.kt0 = null;
-      if (it.wrap) { if (it.wc.display !== 'none') { it.wc.display = 'none'; it.wrap.style.display = 'none'; } }
+      if (it.wrap && !it.grp) { if (it.wc.display !== 'none') { it.wc.display = 'none'; it.wrap.style.display = 'none'; } }
       else S(it, 'display', 'none');
       return;
     }
@@ -1565,7 +1576,7 @@
     if (L.type === 'comp' && !(L.rep && L.rep.on)) S(it, 'overflow', L.noClip ? 'visible' : 'hidden');
     var shf = L.shadow ? 'drop-shadow(' + r4(ev('shX')) + 'px ' + r4(ev('shY')) + 'px ' + r4(Math.max(0, ev('shBlur'))) + 'px ' + css(ev('shColor')) + ')' : '';
     /* a masked or cropped layer casts its shadow from a holder outside the mask, so the shadow is not cut off at the mask */
-    var hold = !!shf && !!(it.wrap || it.c.cp);
+    var hold = !!shf && !!((it.wrap && !it.grp) || it.c.cp);
     if (shf && !hold) f += shf;
     S(it, 'filter', f || 'none');
     if (hold || it.hold) this.shadowHold(it, hold ? shf : 'none');
@@ -1573,7 +1584,7 @@
     this.texture(node, it, L, t, wall, ev);
     var blend = L.blend || 'normal';
     if (it.hold) { if (it.hc.blend !== blend) { it.hc.blend = blend; it.hold.style.mixBlendMode = blend; } blend = 'normal'; }
-    if (it.wrap) { if (it.wc.blend !== blend) { it.wc.blend = blend; it.wrap.style.mixBlendMode = blend; } }
+    if (it.wrap && !it.grp) { if (it.wc.blend !== blend) { it.wc.blend = blend; it.wrap.style.mixBlendMode = blend; } }
     else S(it, 'mixBlendMode', blend);
 
     if (it.wrap) { if (it.multi) this.applyMulti(node, it); else this.applyMatte(node, it); }
@@ -2060,6 +2071,14 @@
     }
     if (it.hc.f !== f) { it.hc.f = f; it.hold.style.filter = f; it.hold.style.webkitFilter = f; bump(it, 'hold'); }
   };
+  /* Shows or hides a masked layer's wrapper. Visibility alone is not enough: the layer inside sets its own
+     visibility to visible, which wins over a hidden parent, so opacity 0 hides it whatever is inside. */
+  function wrapShow(wrap, wc, show) {
+    var v = show ? 'visible' : 'hidden';
+    if (wc.vis !== v) { wc.vis = v; wrap.style.visibility = v; }
+    if (!show && wc.op !== '0') { wc.op = '0'; wrap.style.opacity = '0'; }
+    else if (show && wc.op === '0') { wc.op = '1'; wrap.style.opacity = '1'; }
+  }
   /* ---------- track mattes: any layer can mask another ---------- */
   P.applyMatte = function (node, it) {
     var M = it.matteItem, wrap = it.wrap, wc = it.wc, mode = it.layer.matteMode || 'alpha';
@@ -2073,7 +2092,8 @@
       if (wc.tf !== 'I') { wc.tf = 'I'; wrap.style.transform = 'none'; }
       if (wc.w !== 'big') { wc.w = 'big'; wrap.style.width = node.comp.w + 'px'; wrap.style.height = node.comp.h + 'px'; }
       S(it, 'transform', mcss(it.ew));
-      if (wc.vis !== (inv ? 'visible' : 'hidden')) { wc.vis = inv ? 'visible' : 'hidden'; wrap.style.visibility = wc.vis; }
+      if (wc.rad !== '0px') { wc.rad = '0px'; wrap.style.borderRadius = '0px'; }
+      wrapShow(wrap, wc, inv);
       return;
     }
     /* decide how the matte picture is produced */
@@ -2083,6 +2103,12 @@
       image = polyMask(ML.pts, parseColor(evalProp(ML, 'fill', M.t, this.project))[3]); sync = true;
     } else if (ML.type === 'shape' && ML.shape === 'poly') {
       image = null;
+    } else if (ML.type === 'shape' && simple && !luma && !inv && !ML.gradient) {
+      /* a plain shape (rectangle, rounded or ellipse) of one colour: clip to it instead of drawing a mask picture.
+         Much cheaper for the graphics card, above all when several layers use the same mask. */
+      image = 'clip';
+      var clipA = parseColor(evalProp(ML, 'fill', M.t, this.project))[3];
+      radius = M.c.borderRadius || '0px';
     } else if (ML.type === 'shape' && simple && !luma) {
       var pr = this.project;
       if (ML.gradient) image = 'linear-gradient(' + r4(evalProp(ML, 'gradAngle', M.t, pr)) + 'deg,' + alphaOnly(evalProp(ML, 'fill', M.t, pr)) + ',' + alphaOnly(evalProp(ML, 'fill2', M.t, pr)) + ')';
@@ -2101,11 +2127,17 @@
       image = M.mUrl ? 'url("' + M.mUrl + '")' : null;
     }
     var show = !!image;
-    if (wc.vis !== (show ? 'visible' : 'hidden')) { wc.vis = show ? 'visible' : 'hidden'; wrap.style.visibility = wc.vis; }
+    wrapShow(wrap, wc, show);
     if (!show) return;
 
     var wm, ww, wh;
-    if (!inv) {
+    if (image === 'clip') {
+      wm = M.wm; ww = mw; wh = mh;
+      SP(wrap, wc, '-webkit-mask-image', 'none');
+      if (wc.rad !== radius + '|c') { wc.rad = radius + '|c'; wrap.style.borderRadius = radius; wrap.style.overflow = 'hidden'; }
+      var cop = String(r4((M.op == null ? 1 : M.op) * clipA));
+      if (wc.op !== cop) { wc.op = cop; wrap.style.opacity = cop; }
+    } else if (!inv) {
       wm = M.wm; ww = mw; wh = mh;
       var mc = (ML.type === 'sequence' && M.crop && image && /^url/.test(image) && M.frameSrc && image.indexOf(M.frameSrc) >= 0) ? M.crop : null;
       SP(wrap, wc, '-webkit-mask-image', image);
@@ -2140,6 +2172,18 @@
     S(it, 'transform', mcss(winv ? mul(winv, it.ew) : it.ew));
   };
 
+  /* can this masked layer share its mask wrapper with its neighbour? Only with a plain, fully opaque shape mask in normal
+     alpha mode, where clipping the layers together looks exactly like clipping each one */
+  function groupable(L, ML) {
+    if (!ML || ML.type !== 'shape' || ML.shape === 'poly' || ML.gradient || (ML.mask && ML.mask.on)) return false;
+    if ((L.matteMode || 'alpha') !== 'alpha' || L.shadow || (L.blend && L.blend !== 'normal')) return false;
+    var a = ML.a || {}, p = ML.p || {};
+    if (a.fill || a.op || (p.op != null && p.op !== 100) || a.blur || (p.blur || 0) > 0) return false;
+    var b = ML.bind || {}, lb = L.bind || {};
+    if (b.fill || b.op || b.gradient || b.blur || (ML.link && ML.link.fill) || lb.shadow || lb.blend || lb.matteMode) return false;
+    var f = String(p.fill || '#ffffffff');
+    return !(f.length === 9 && f.slice(7).toLowerCase() !== 'ff');
+  }
   /* the list of layers that mask a layer: the main matte plus any added in the node screen, each add / subtract / intersect */
   function matteSpecs(L) {
     var out = [], more = L.matteMore || [], i;
@@ -2163,7 +2207,7 @@
     if (pending && it.multiOk) return;
     var show = layers.length > 0 && !pending;
     it.multiOk = show;
-    if (wc.vis !== (show ? 'visible' : 'hidden')) { wc.vis = show ? 'visible' : 'hidden'; wrap.style.visibility = wc.vis; }
+    wrapShow(wrap, wc, show);
     if (!show) return;
     if (layers[0].op !== 'add') layers.unshift({ g: { image: 'linear-gradient(#000,#000)', x: 0, y: 0, w: cw, h: ch }, op: 'add' });
     var img = [], pos = [], size = [], comp = [], MAP = { add: 'source-over', sub: 'destination-out', int: 'destination-in' };

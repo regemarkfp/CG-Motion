@@ -339,3 +339,14 @@ body.tool-hand #stage-wrap{cursor:grab}body.tool-hand #stage-wrap.panning,#stage
 .upd-mark{position:absolute;bottom:0;height:12px;line-height:12px;font-size:9px;background:#3ab4ff;color:#001;padding:0 4px;border-radius:0 3px 3px 0;cursor:ew-resize;z-index:2}
 .upd-ph{position:absolute;top:0;bottom:0;width:1px;background:#ff3b3b;pointer-events:none;z-index:3}.upd-mline{position:absolute;top:0;bottom:0;width:1px;background:rgba(58,180,255,.55);pointer-events:none}
 .upd-kb{width:26px;flex:none}
+
+/* update notice and About */
+.upd-toast{position:fixed;right:16px;bottom:34px;z-index:120;width:360px;background:#2e2e2e;border:1px solid #000;border-left:4px solid #00ff83;border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.upd-t-title{font-weight:700;font-size:14px}
+.upd-t-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.modal.about{align-items:center;text-align:center;width:470px;max-width:92vw}
+.modal.about .modal-btns{flex-wrap:wrap;justify-content:center}
+.about-logo{width:170px;margin:6px 0}
+.about-name{font-size:22px;font-weight:800}
+.about-ver{font-size:13px;color:#bbb}
+.upd-status{min-height:16px}
