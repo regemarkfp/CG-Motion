@@ -15,5 +15,9 @@ contextBridge.exposeInMainWorld('cgNative', {
   snapshot: (o) => ipcRenderer.invoke('snapshot', o),
   fontFaces: (list) => ipcRenderer.invoke('fontFaces', list),
   savePdf: (o) => ipcRenderer.invoke('savePdf', o),
+  latestRelease: () => ipcRenderer.invoke('latestRelease'),
+  openExternal: (url) => ipcRenderer.invoke('openExternal', url),
+  platform: process.platform,
+  arch: process.arch,
   reportError: (m) => ipcRenderer.send('rendererError', String(m).slice(0, 2000))
 });

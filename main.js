@@ -206,6 +206,26 @@ ipcMain.handle('openGuide', async () => {
   }
   return { error: 'The guide (' + name + ') was not found next to CG Motion.' };
 });
+/* ---------- updates: the newest release on GitHub, and opening its pages in the browser ---------- */
+const UPDATE_REPO = 'regemarkfp/CG-Motion';
+ipcMain.handle('latestRelease', async () => {
+  try {
+    const { net } = require('electron');
+    const r = await net.fetch('https://api.github.com/repos/' + UPDATE_REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'CG-Motion/' + app.getVersion() } });
+    if (!r.ok) return { error: r.status === 404 ? 'no release published yet' : 'GitHub answered ' + r.status };
+    const j = await r.json();
+    log('update check', 'running ' + app.getVersion(), 'latest ' + j.tag_name);
+    return { tag: j.tag_name, name: j.name, url: j.html_url, notes: String(j.body || '').slice(0, 4000),
+      assets: (j.assets || []).map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size })) };
+  } catch (e) { log('update check failed', e && e.message); return { error: (e && e.message) || 'no connection' }; }
+});
+/* only CG Motion's own GitHub pages and downloads are opened from here */
+ipcMain.handle('openExternal', async (e, url) => {
+  const u = String(url || '');
+  if (!/^https:\/\/github\.com\/regemarkfp\/CG-Motion(\/|$)/.test(u)) return false;
+  await shell.openExternal(u);
+  return true;
+});
 ipcMain.handle('readApp', async (e, rel) => {
   /* files that ship with the app: the template runtime, the Lottie player, package.json, the tutorial project */
   const appDir = path.join(__dirname, 'app');

@@ -64,6 +64,10 @@ On a 64-bit Linux PC with Node.js 20 or newer, run `bash build-linux.sh` in the 
 
 From the folder, `bash start-cg-motion.sh` runs CG Motion without building (add `--safe` for safe mode). GitHub also builds both Linux files on every upload (see below), so a Linux PC is not needed to make them.
 
+### Updates
+
+CG Motion checks the latest GitHub release a few seconds after it starts (main.js `latestRelease`, app/js/update.js) and offers the installer for the computer it runs on. About > Check for updates... checks by hand; About > Check for updates when CG Motion starts switches the start-up check off. It only opens pages and downloads under github.com/regemarkfp/CG-Motion, and installs nothing itself.
+
 ### From the folder (while working on the app)
 
 Double-click **Start CG Motion.bat**. The first run downloads the app shell (Electron), the Lottie player and the build tools; after that it opens straight away.
