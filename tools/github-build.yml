@@ -58,7 +58,8 @@ jobs:
         # an empty CSC_LINK is read as a file path (the project folder), so build unsigned when there is no certificate
         run: |
           [ -n "$CSC_LINK" ] || unset CSC_LINK CSC_KEY_PASSWORD
-          npx electron-builder ${{ matrix.target }} --publish never
+          # macOS sometimes fails making the .dmg ("hdiutil: resource busy"); try once more after a pause
+          npx electron-builder ${{ matrix.target }} --publish never || { [ "$RUNNER_OS" = macOS ] && sleep 20 && npx electron-builder ${{ matrix.target }} --publish never; }
       - name: Check the build has all the editor files (Windows and Linux)
         if: runner.os != 'macOS'
         run: node tools/check-build.js ${{ runner.os == 'Linux' && 'linux' || 'win' }}
