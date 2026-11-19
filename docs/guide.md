@@ -6,7 +6,7 @@ Oct 9, 2026 · @Ruan
 
 CG Motion is a timeline editor for CasparCG HTML templates, made by RegemarkFP. You design graphics with layers and keyframes, mark which text, pictures and colours CasparCG can change, and export each composition as a single HTML file that plays on air.
 
-This guide covers **version 1.0**. It is updated with every release; the release notes at the end list what changed.
+This guide covers **version 1.2**. It is updated with every release; the release notes at the end list what changed.
 
 ## Getting started
 
@@ -125,6 +125,16 @@ The window is made of panels you can rearrange like Premiere Pro or After Effect
 &#91;image: The timeline with stop markers, a repeat section, an invoke band and keyframes\]
 
 Above the ruler: orange **stop** markers, the purple **repeat** section and the green **flash** invoke range. A layer opened with its triangle shows its animated properties and keyframes.
+
+### Compositions and duplicating them
+
+Every template is a composition with its own timeline. They are listed under **Compositions** in the Assets panel: **+ New** makes an empty one, **Open** (or a double-click) shows its timeline, **+** adds it to the open composition as a layer (a pre-comp), and **⋯** (or a right-click on the row) has Rename, Duplicate, Make this the main composition and Delete.
+
+To duplicate a composition, click **Dup** on its row, choose **Edit > Duplicate composition...**, or press **Ctrl+Shift+D** for the open one. Give the copy a name and click **Duplicate**. The copy has everything the original has: its layers, keyframes, fields, stop markers, repeat sections, invokes, parenting and masks. It is a separate template, so changing it leaves the original alone, and it exports as its own file named after it. Use it to make a second version of a graphic, for example a home and an away lower third, or a test copy before a big change.
+
+If the composition holds pre-comps, the dialog asks whether to **Also duplicate the pre-comps inside it**. Ticked, the copy gets its own copies of them (named "... copy"), so you can change them without touching the original. Not ticked, the original and the copy use the same pre-comps, and a change inside one shows in both.
+
+To give a single pre-comp layer its own copy, right-click the layer in the timeline and choose **Make composition unique**. The layer then uses a new copy, and the other layers that used the same composition are left as they were.
 
 ## Layers
 
@@ -699,6 +709,7 @@ If the editor hasn't finished starting after 12 seconds, CG Motion asks what to 
 | Ctrl+C / Ctrl+V | Copy / paste layers or keyframes |
 | Ctrl+D | Duplicate |
 | Ctrl+Shift+C | Pre-compose |
+| Ctrl+Shift+D | Duplicate the open composition |
 | Delete | Delete the selected layers or keyframes |
 | Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
 | Ctrl+S / Ctrl+Shift+S | Save / save as |
@@ -717,5 +728,6 @@ A new row is added here, newest first, with every release, listing what's new an
 
 | Version | Released | What's new | Fixes |
 | --- | --- | --- | --- |
+| 1.2 | 19 November 2026 | Duplicate compositions (the Dup button, Edit > Duplicate composition... or Ctrl+Shift+D), optionally with the pre-comps inside them, and Make composition unique for a single pre-comp layer | The Compositions list in the Assets panel no longer pushes the Main and Delete buttons out of sight on narrow panels: they are in the ⋯ menu (or a right-click on the row). |
 | 1.1 | 14 November 2026 | Linux version (AppImage and .deb) and Mac version (.dmg for Intel and Apple Silicon), all built on GitHub with the Windows files and published together as a release | On Linux the splash screen is a solid dark window, as desktops without a compositor drew its see-through corners black. The Linux build is now checked for missing editor files too, like the Windows build. |
 | 1.0 | 9 October 2026 | First full release: Windows installer and portable app signed as RegemarkFP, RFP splash and colours, multiline text with shrink to fit, text styles with presets, tables, charts (including double bars for stat comparisons), crawls, Loopic import, vMix title import, Photoshop (.psd) import, Affinity file import (.af, .afdesign, .afphoto, .afpub), sequence optimising, motion blur, the Fit and sideways scrolling viewer controls, a tutorial project, the Data panel, textures (with halftone, gradient, radial glow, rays and rings, motion, sizing and refine controls, presets, layer masks and full CasparCG control), shadows that fall outside masks, children that do not take a parent's skew, the Hand tool and trackpad scrolling, this guide as a PDF next to the program, CasparCG control of every table cell, chart value and crawl item, a PDF variables sheet of every template with a still frame, its fields and its invokes, installed fonts embedded into exported templates automatically, and update animations (presets, or custom keyframes on each layer's own update timeline with an update marker) that play when a field changes, and text animation by letter, word or line, in and out on the timeline and per letter or word on updates | An empty grey window at startup on some PCs: CG Motion now recovers on its own, offers a restart without graphics acceleration, shows startup errors on screen, keeps a log, and has a safe-mode start file. Builds are now checked for missing editor files before an installer is made, and an incomplete installation says so instead of opening empty. An invoke's Plays list now offers every composition layer, not only those already set to run independently; choosing one sets it. Changes made inside a pre-comp didn't reach the template: Export template (and the CasparCG panel) now write the template(s) that use the open pre-comp. Pre-comps that share field names (left and right clocks) got the same values: composition layers now have a Field suffix, with a warning and one-click fix in the Control panel; a field also follows its layer when the layer is renamed. |
