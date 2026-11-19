@@ -6,7 +6,7 @@ Oct 9, 2026 · @Ruan
 
 CG Motion is a timeline editor for CasparCG HTML templates, made by RegemarkFP. You design graphics with layers and keyframes, mark which text, pictures and colours CasparCG can change, and export each composition as a single HTML file that plays on air.
 
-This guide covers **version 1.2**. It is updated with every release; the release notes at the end list what changed.
+This guide covers **version 1.3**. It is updated with every release; the release notes at the end list what changed.
 
 ## Getting started
 
@@ -40,6 +40,12 @@ Everything works the same as on Windows. Settings and recent projects are kept i
 ### Installing on a Mac
 
 Open **CG Motion 1.1.0 arm64.dmg** (Apple Silicon) or **CG Motion 1.1.0 x64.dmg** (Intel) and drag CG Motion to Applications. CG Motion is not notarised by Apple, so the first time, right-click it in Applications, choose **Open**, then **Open** again (or allow it under **System Settings > Privacy & Security**).
+
+### Updates and About
+
+CG Motion checks GitHub for a newer version a few seconds after it starts. When there is one, a card in the bottom corner says so: **Download** gets the installer for this computer (the Setup file on Windows, the .dmg on a Mac, the .deb on Linux) in your web browser, **What's new** opens the release page, **Later** closes the card and **Skip this version** stops it asking about that version. Close CG Motion before you install the new version; your projects and settings are kept.
+
+The **About** menu at the top has **About CG Motion...** (the version you have, and whether a newer one is out), **Check for updates...**, and **Check for updates when CG Motion starts** to switch the start-up check on or off. Nothing is downloaded or installed without you clicking Download.
 
 ### Opening CG Motion
 
@@ -377,6 +383,8 @@ Children follow the parent's position, rotation and scale, but not its skew: ske
 - Modes: alpha, inverted alpha, luma and inverted luma.
 - The mask layer is hidden unless you tick **Keep this layer visible as well**. Its outline shows in orange while the masked layer is selected.
 - Animate the mask layer to make wipes and reveals.
+- **Smooth playback with masks:** a mask that is a plain rectangle, rounded rectangle or ellipse of one colour (no gradient) plays fastest. Several layers masked by the same shape play fastest when they sit next to each other in the timeline, because they are then clipped together. Text, pictures and gradients as masks cost more, so use them on fewer layers.
+- A mask scaled to 0 hides what it masks (an inverted mask shows all of it), so a wipe can start from nothing.
 
 ### Crop mask
 
@@ -728,6 +736,7 @@ A new row is added here, newest first, with every release, listing what's new an
 
 | Version | Released | What's new | Fixes |
 | --- | --- | --- | --- |
+| 1.3 | 19 November 2026 | Checks for a newer version when it starts, with a Download button for this computer's installer; an About menu with About CG Motion, Check for updates and a switch for the start-up check. Masks made from a plain shape are drawn as a clip, and layers next to each other that share such a mask are clipped together, so many masked layers play much more smoothly | A layer masked by a mask at 0 scale (for example at the start of a wipe that scales open) showed in full instead of hidden, then jumped to the mask once it grew. It now stays hidden until the mask has a size. |
 | 1.2 | 19 November 2026 | Duplicate compositions (the Dup button, Edit > Duplicate composition... or Ctrl+Shift+D), optionally with the pre-comps inside them, and Make composition unique for a single pre-comp layer | The Compositions list in the Assets panel no longer pushes the Main and Delete buttons out of sight on narrow panels: they are in the ⋯ menu (or a right-click on the row). |
 | 1.1 | 14 November 2026 | Linux version (AppImage and .deb) and Mac version (.dmg for Intel and Apple Silicon), all built on GitHub with the Windows files and published together as a release | On Linux the splash screen is a solid dark window, as desktops without a compositor drew its see-through corners black. The Linux build is now checked for missing editor files too, like the Windows build. |
 | 1.0 | 9 October 2026 | First full release: Windows installer and portable app signed as RegemarkFP, RFP splash and colours, multiline text with shrink to fit, text styles with presets, tables, charts (including double bars for stat comparisons), crawls, Loopic import, vMix title import, Photoshop (.psd) import, Affinity file import (.af, .afdesign, .afphoto, .afpub), sequence optimising, motion blur, the Fit and sideways scrolling viewer controls, a tutorial project, the Data panel, textures (with halftone, gradient, radial glow, rays and rings, motion, sizing and refine controls, presets, layer masks and full CasparCG control), shadows that fall outside masks, children that do not take a parent's skew, the Hand tool and trackpad scrolling, this guide as a PDF next to the program, CasparCG control of every table cell, chart value and crawl item, a PDF variables sheet of every template with a still frame, its fields and its invokes, installed fonts embedded into exported templates automatically, and update animations (presets, or custom keyframes on each layer's own update timeline with an update marker) that play when a field changes, and text animation by letter, word or line, in and out on the timeline and per letter or word on updates | An empty grey window at startup on some PCs: CG Motion now recovers on its own, offers a restart without graphics acceleration, shows startup errors on screen, keeps a log, and has a safe-mode start file. Builds are now checked for missing editor files before an installer is made, and an incomplete installation says so instead of opening empty. An invoke's Plays list now offers every composition layer, not only those already set to run independently; choosing one sets it. Changes made inside a pre-comp didn't reach the template: Export template (and the CasparCG panel) now write the template(s) that use the open pre-comp. Pre-comps that share field names (left and right clocks) got the same values: composition layers now have a Field suffix, with a warning and one-click fix in the Control panel; a field also follows its layer when the layer is renamed. |
