@@ -563,7 +563,7 @@ Main.cmds = {
   snapT: function () { App.ui.snap = App.ui.snap === false; $('#snap').checked = App.ui.snap; },
   resetLayout: function () { Dock.reset(); },
   'new': IO.newProject, projects: function () { IO.showStart(); }, open: IO.open, save: function () { IO.save(false); }, saveas: function () { IO.save(true); }, 'export': function () { IO.exportTemplate(); }, exportOnly: function () { IO.exportTemplate(true); },
-  undo: App.undo, redo: App.redo, dup: App.duplicate, dupComp: function () { Panels.duplicateComp(App.compId); }, precomp: App.precompose, del: Main.del,
+  undo: App.undo, redo: App.redo, dup: App.duplicate, dupComp: function () { Panels.duplicateComp(App.compId); }, about: function () { Update.about(); }, checkUpdates: function () { Update.check(true); }, updAutoT: function () { Update.setAuto(!Update.auto()); UI.status(Update.auto() ? 'CG Motion checks for updates when it starts.' : 'Checking for updates at start-up is off. Use About > Check for updates.'); }, precomp: App.precompose, del: Main.del,
   'null': function () { App.addLayer('null'); },
   table: function () { App.addLayer('table'); }, chart: function () { App.addLayer('chart'); }, crawl: function () { App.addLayer('crawl'); },
   repeat: function () {
@@ -687,5 +687,7 @@ Main.init = function () {
   if (window.__noLottie || !window.lottie) UI.status('Lottie player not installed yet - everything else works. Run the installer once to enable Lottie layers.');
   window.__booted = true;
   if (N && N.booted) N.booted();
+  /* look for a newer version on GitHub a few seconds after start-up (About > Check for updates when CG Motion starts) */
+  if (N && !window.__test && Update.auto()) setTimeout(function () { Update.check(false); }, 4000);
 };
 window.addEventListener('DOMContentLoaded', Main.init);

@@ -409,7 +409,8 @@ Menu.defs = function () {
     ['View', [['Fit composition', 'fit'], ['Actual size (100%)', 'z100'], '-', ['Hand tool (drag to move around)', 'toolHand', 'H', function () { return App.tool === 'hand'; }], ['Trackpad scrolling (two fingers move, pinch zooms)', 'trackT', '', function () { return !!App.ui.trackpad; }], '-', ['Safe areas', 'guidesT', '', function () { return !!App.ui.guides; }], ['Snapping', 'snapT', '', function () { return App.ui.snap !== false; }], '-',
       ['Node screen', 'nodes', '', function () { return Nodes.on; }]]],
     ['Window', Object.keys(Dock.PANELS).map(function (k) { return [Dock.PANELS[k].title, 'win:' + k, '', function () { return !!Dock.groupOf(k); }]; }).concat(['-', ['Float the Viewer in its own window', function () { Dock.popOut('viewer'); }], ['Float the Timeline in its own window', function () { Dock.popOut('timeline'); }], ['Reset layout', 'resetLayout']])],
-    ['Help', [['Open the guide (PDF)', 'guide', 'F1'], ['Open the tutorial project', 'tutorial'], ['Keyboard shortcuts', 'shortcuts']]]
+    ['Help', [['Open the guide (PDF)', 'guide', 'F1'], ['Open the tutorial project', 'tutorial'], ['Keyboard shortcuts', 'shortcuts']]],
+    ['About', [['About CG Motion...', 'about'], ['Check for updates...', 'checkUpdates'], '-', ['Check for updates when CG Motion starts', 'updAutoT', '', function () { return Update.auto(); }]]]
   ];
 };
 Menu.init = function () {
